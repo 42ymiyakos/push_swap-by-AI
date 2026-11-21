@@ -1,4 +1,17 @@
-# BEST RESULTS (updated 2026-11-21, v5)
+# BEST RESULTS (updated 2026-11-21, v6)
+
+## v6 (C) vs reference — held-out eval3 + eval4, 60 cases per size, identical inputs
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 100 | **PSIG v6 (C, 15 s)** | **362.5** | **361.8** | 9.0 | 389 | 14.8 |
+| 100 | reference | 363.5 | 363.9 | 9.3 | 388 | 16.9 |
+| 500 | **PSIG v6 (C, 40 s)** | **2907.0** | **2921.1** | 70.7 | 3105 | 39.5 |
+| 500 | reference | 2967.5 | 2967.5 | 34.3 | 3041 | 47.7 |
+
+Paired (ours − reference): N=100 mean −2.08, 95% CI [−5.1, +1.1], 37 W / 1 T / 22 L, p = 0.21 (slight edge, not significant);
+N=500 mean **−46.5**, 95% CI [−63.9, −28.8], 46 W / 14 L, **p < 0.0001**.
+Best solver: PSIG v6 (C), `research/c/`, commit `17c62ae`.
+
 
 ## v5 (C, A2A enabled): N=100 held-out eval3+eval4 (60 cases)
 | Solver | Median | Mean | Std | Max |

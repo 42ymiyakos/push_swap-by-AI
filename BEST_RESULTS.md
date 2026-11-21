@@ -1,4 +1,17 @@
-# BEST RESULTS (updated 2026-11-21, v8)
+# BEST RESULTS (updated 2026-11-21, v12)
+
+## v12 (C) vs reference — held-out eval3 + eval4, 60 cases per size
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 100 | **PSIG v12 (C, 15 s)** | **361.0** | **361.0** | 9.1 | 388 | 14.7 |
+| 100 | reference | 363.5 | 363.9 | 9.3 | 388 | 16.9 |
+| 500 | **PSIG v12 (C, 40 s)** | **2849.5** | **2874.6** | 74.7 | 3060 | 39.4 |
+| 500 | reference | 2967.5 | 2967.5 | 34.3 | 3041 | 47.7 |
+
+Paired: N=500 mean **−92.9**, 95% CI [−111.4, −73.6], 49 W / 11 L, p < 0.0001.
+N=100 mean −2.9, 95% CI [−5.8, +0.1], 37 W / 1 T / 22 L, p = 0.07.
+Best solver: PSIG v12 (C), commit `67e937c`.
+
 
 ## v8 (C) vs reference — held-out eval3 + eval4, 60 cases per size
 | N | Solver | Median | Mean | Std | Max | s/case |

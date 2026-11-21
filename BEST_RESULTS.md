@@ -1,4 +1,13 @@
-# BEST RESULTS (updated 2026-11-21, v4)
+# BEST RESULTS (updated 2026-11-21, v5)
+
+## v5 (C, A2A enabled): N=100 held-out eval3+eval4 (60 cases)
+| Solver | Median | Mean | Std | Max |
+|---|---:|---:|---:|---:|
+| PSIG v5 (C, 15 s) | **362.5** | **362.2** | 9.2 | 389 |
+| reference (~17 s) | 363.5 | 363.9 | 9.3 | 388 |
+Paired: 37 wins / 1 tie / 22 losses, mean diff −1.73, 95% CI [−4.8, +1.5], p = 0.31 → slight edge, not significant.
+v5 vs v4 on dev sets: N=100 −3.15 (p = 0.016, 40 cases); N=500 +4.3 (p = 0.59, 16 cases; C++ gave −7.6) → neutral.
+
 
 ## Final held-out evaluation v4 (C version, fresh seeds eval3 + eval4 = 60 cases per size)
 Identical inputs, 4 concurrent processes on a 4-vCPU container. Default settings (15 s for N=100, 40 s for N=500).

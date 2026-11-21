@@ -68,3 +68,9 @@
     N=500 mean −26.5 (CI [−44, −9], p = 0.004), 39/60 wins → v4 promoted as best for N=500.
 32. FAILED: branch-free, unpruned "vectorizable" sweep: 300 iterations 18.7 s → 24.7 s (the lost pruning costs more than
     SIMD gains). Reverted (sources restored to d9d3dc3). The lower-bound pruning is worth keeping.
+33. Racing from top-2/3 initial solutions at N=500: worse (mean 2939 → 2959/2974).
+34. Sweep: c1 tabulated by B-rank (O(sb) per step): about 5% faster, identical output. Tabulating all six quantities was slower.
+35. A2A (sa moves, a2amax 1) re-tested with the better init: N=100 −3.3 (C++, 40 cases, p = 0.012), −3.15 (C, p = 0.016);
+    N=500 neutral. Ported A2A + rotation sync to C (byte-identical to C++). v5 = A2A on by default.
+    Held-out N=100 (60 cases): 362.5 vs ref 363.5 median, mean −1.73, p = 0.31.
+    Valgrind reports a 'definite' leak only for -march=native builds (LSan and generic -O3 are clean): treated as a false positive.

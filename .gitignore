@@ -1,0 +1,7 @@
+build/
+*.o
+/research/bench/runs/*/raw/
+/research/data/cache/
+__pycache__/
+*.pyc
+/bin/

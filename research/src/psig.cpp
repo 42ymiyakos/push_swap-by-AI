@@ -8,6 +8,7 @@
 #include "peephole.hpp"
 #include <chrono>
 #include <cmath>
+#include <tuple>
 
 static double now_sec() {
     using namespace std::chrono;
@@ -25,6 +26,7 @@ struct Params {
     int twophase = 0;
     double pqd = 0;
     std::vector<int> peepK{};
+    std::vector<int> chunkList{}; int kper = 3, bwm = 0;
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -317,6 +319,9 @@ int main(int argc, char **argv) {
         else if (auto x = val("--restarts=")) P.restarts = atoi(x);
         else if (auto x = val("--rfrac=")) P.rfrac = atof(x);
         else if (auto x = val("--kinit=")) P.kinit = atoi(x);
+        else if (auto x = val("--chunklist=")) { P.chunkList.clear(); for (const char *q = x; *q;) { P.chunkList.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
+        else if (auto x = val("--kper=")) P.kper = atoi(x);
+        else if (auto x = val("--bwm=")) P.bwm = atoi(x);
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--a2amax=")) P.a2amax = atoi(x);
         else if (auto x = val("--ginit=")) P.ginit = atoi(x);
@@ -350,7 +355,8 @@ int main(int argc, char **argv) {
         print_ops(chunk_construct(a0, K, std::max(2, n / 80), 0)); return 0;
     }
     if (P.time < 0) P.time = n <= 150 ? 10.0 : (n <= 300 ? 20.0 : 40.0);
-    if (n > 300 && !setLarge) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 30; P.ktop = 3; P.bw = 100; P.bws = 0; }
+    if (n > 300 && !setLarge) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 30; P.ktop = 3; P.bw = 100; P.bws = 0; P.chunkList = {4, 6, 8, 10, 12}; P.kper = 3; P.bwm = 20; }
+    if (n <= 300 && P.chunkList.empty()) { P.chunkList = n <= 150 ? std::vector<int>{2, 3, 4} : std::vector<int>{3, 4, 5, 6}; P.kper = 3; P.bwm = 100; }
     if (!setPeep) P.peepK = n <= 150 ? std::vector<int>{4, 6, 8} : std::vector<int>{4, 6};
     double t0g = now_sec();
     Rng rng(P.seed * 0x9E3779B97F4A7C15ull + 12345);
@@ -367,12 +373,24 @@ int main(int argc, char **argv) {
             auto K = lis_from(a0, st);
             if (std::find(Ks.begin(), Ks.end(), K) == Ks.end()) Ks.push_back(K);
         }
+        std::vector<int> mlist = P.chunkList.empty() ? std::vector<int>{m} : P.chunkList;
+        // stage 1: greedy screening per chunk count; stage 2: small beam; stage 3: full beam on the best
+        std::vector<std::tuple<size_t, int, int>> st2;  // (size, k, m)
+        for (int mm : mlist) {
+            std::vector<std::pair<size_t, int>> sc1;
+            for (int k = 0; k < (int)Ks.size(); k++) sc1.push_back({chunk_construct(a0, Ks[k], mm, P.bws, P.bc).size(), k});
+            std::sort(sc1.begin(), sc1.end());
+            for (int k = 0; k < std::min((int)sc1.size(), P.kper); k++) {
+                size_t sz = P.bwm > 0 ? chunk_construct(a0, Ks[sc1[k].second], mm, P.bwm, P.bc).size() : sc1[k].first;
+                st2.push_back({sz, sc1[k].second, mm});
+            }
+        }
+        std::sort(st2.begin(), st2.end());
         std::vector<std::pair<size_t, int>> sc;
-        for (int k = 0; k < (int)Ks.size(); k++) sc.push_back({chunk_construct(a0, Ks[k], m, P.bws, P.bc).size(), k});
-        std::sort(sc.begin(), sc.end());
-        for (int k = 0; k < std::min((int)sc.size(), std::max(P.ktop, P.kinit)); k++) {
-            std::vector<Op> o = chunk_construct(a0, Ks[sc[k].second], m, P.bw, P.bc);
+        for (int k = 0; k < std::min((int)st2.size(), std::max(P.ktop, P.kinit)); k++) {
+            std::vector<Op> o = chunk_construct(a0, Ks[std::get<1>(st2[k])], std::get<2>(st2[k]), P.bw, P.bc);
             inits.push_back(o);
+            sc.push_back({o.size(), std::get<1>(st2[k])});
             if (base.empty() || o.size() < base.size()) base = o;
         }
         lis_len = 0; for (char c : Ks[sc[0].second]) lis_len += c;

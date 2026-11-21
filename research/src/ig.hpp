@@ -346,8 +346,7 @@ struct Reinserter {
                 int c1 = 1 + (sync ? comb_sync(fa1, sa1, fb1, sb, f.pr, f.prr) : comb_cost(fa1, sa1, fb1, sb));
                 // ---- j = x (pruned by lower bound against the best found so far) ----
                 int lbJ = std::min(swPmi[s] >= 0 ? swPm[s] + swG[s] + lbC2 : INT_MAX / 2, P[x] + c1 + cc) + lbTail;
-                (void)lbJ;  // pruning disabled: every slot is evaluated exactly (matches the vectorized C sweep)
-                {
+                if (lbJ < bestSoFar) {
                     int tb1 = sb ? mq(f.lbB + ltA, sb1) : 0;
                     int fbS2 = 0;
                     if (sb) fbS2 = f.t == 0 ? mq(mq(f.dstRaw, sb) - Rm, sb) : mq(f.srcIdx - Rm, sb);

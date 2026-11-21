@@ -62,3 +62,9 @@
     Equal-count chunk boundaries (cmode 1) give 3285 on it. v4 = both chunk modes in the candidate pool:
     dev40_u500 median 2927 / mean 2938 / sd 49 / max 3075 (v3: 2923.5 / 2940 / 63 / 3109);
     dev40_u100 (15 s) 362.0 / 363.3; N=100 mean init 422.6 → 417.7.
+30. C beam heuristic: removed qsort (points already ascending), incremental B-value bitset, and B-side marking when
+    |B| < |A| → N=500 init 9.8 → 8.5 s, identical output. -O3 -march=native: about 11% faster.
+31. Large held-out eval (eval3 + eval4, 60 cases per size, C v4): N=100 parity (mean +0.6, p = 0.73);
+    N=500 mean −26.5 (CI [−44, −9], p = 0.004), 39/60 wins → v4 promoted as best for N=500.
+32. FAILED: branch-free, unpruned "vectorizable" sweep: 300 iterations 18.7 s → 24.7 s (the lost pruning costs more than
+    SIMD gains). Reverted (sources restored to d9d3dc3). The lower-bound pruning is worth keeping.

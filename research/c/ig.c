@@ -27,14 +27,6 @@ typedef struct {
 } RI;
 
 static inline int md(int x, int m) { return m > 0 ? ((x % m) + m) % m : 0; }
-#define SW_BIG (1 << 28)
-static inline int cmq(int x, int m) { x = x < 0 ? x + m : x; return x >= m ? x - m : x; }
-static inline int ccomb(int fa, int sa, int fb, int sb) {
-    int ra = fa, rra = fa ? sa - fa : 0, rb = fb, rrb = fb ? sb - fb : 0;
-    int c0 = ra > rb ? ra : rb, c1 = rra > rrb ? rra : rrb, c2 = ra + rrb, c3 = rra + rb;
-    int x = c0 < c1 ? c0 : c1, y = c2 < c3 ? c2 : c3;
-    return x < y ? x : y;
-}
 static inline int mq(int x, int m) { x = x < 0 ? x + m : x; x = x >= m ? x - m : x; return m > 0 ? x : 0; }
 
 static void grow(int **p, int *cap, int need) { if (*cap < need) { *cap = need * 2; *p = xrealloc(*p, sizeof(int) * *cap); } }
@@ -265,7 +257,8 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
         for (int k = 0; k < 7; k++) *arrs[k] = xrealloc(*arrs[k], sizeof(int) * R->swcap);
     }
     int *swR = R->swR, *swG = R->swG, *swPm = R->swPm, *swPmi = R->swPmi, *slotBest = R->slotBest, *slotI = R->slotI, *slotJ = R->slotJ;
-    for (int s = 0; s < m; s++) { swR[s] = 0; swG[s] = 0; swPm[s] = SW_BIG; swPmi[s] = -1; slotBest[s] = INT_MAX; slotI[s] = -1; slotJ[s] = -1; }
+    for (int s = 0; s < m; s++) { swR[s] = 0; swG[s] = 0; swPm[s] = INT_MAX; swPmi[s] = -1; slotBest[s] = INT_MAX; slotI[s] = -1; slotJ[s] = -1; }
+    int bestSoFar = R->ubInit;
     for (int x = 0; x <= Q; x++) {
         int sa = x < Q ? R->qi[x].sa : R->finSa, sb = x < Q ? R->qi[x].sb : 0;
         int sa1 = sa + 1;
@@ -281,7 +274,7 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
                 int d = R->P[Q] + c1 + cc + finB;
                 if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
                 if (swPmi[s] >= 0) {
-                    int dd = swPm[s] + swG[s] + c2 + finB;  /* final column */
+                    int dd = swPm[s] + swG[s] + c2 + finB;
                     if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = Q; }
                 }
             }
@@ -302,36 +295,43 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
             ev[a][b2] = 1 + comb_cost(faOld, sa, fb, sb1, NULL) - f->c;
         }
         int base = SU[x + 1] + finA - f->c;
-        /* branch-free inner loop over all slots (auto-vectorizable) */
-        const int Px = R->P[x], fc = f->c, isA2B = f->t == 0, lbB = f->lbB, dstRaw = f->dstRaw, srcIdx = f->srcIdx;
-        const int F2x = F2[x], FSx = FS[x], e00 = ev[0][0], e01 = ev[0][1], e10 = ev[1][0], e11 = ev[1][1];
-        const int dRaw0 = sb ? dstRaw % sb : 0;
+        int lbS2 = 1 + imin(FS[x], sa + 1 - FS[x]);
+        int lbC2 = 1 + (sa ? imin(F2[x], sa - F2[x]) : 0);
+        if (lbC2 < 1) lbC2 = 1;
+        int lbTail = lbS2 + base;
         for (int s = 0; s < m; s++) {
             int Rv = swR[s];
             int ltA = s < pA, ltU = s < pU;
-            int Rm = Rv < sb ? Rv : Rv - sb;
-            Rm = sb ? Rm : 0;
-            int fb1 = sb ? cmq(Rm - tbOld, sb) : 0;
-            int c1 = 1 + ccomb(fa1, sa1, fb1, sb);
-            int tb1 = sb ? cmq(lbB + ltA, sb1) : 0;
-            int fbS2 = sb ? (isA2B ? cmq(dRaw0 - Rm, sb) : cmq(srcIdx - Rm, sb)) : 0;
-            int s2 = 1 + ccomb(FSx, sa + 1, fbS2, sb);
-            int tail = s2 + base;
-            int d = Px + c1 + cc + tail;
-            int sbv = slotBest[s], siv = slotI[s], sjv = slotJ[s];
-            int b1 = d < sbv;
-            sbv = b1 ? d : sbv; siv = b1 ? x : siv; sjv = b1 ? x : sjv;
-            int fbC2 = cmq(Rv - tb1, sb1);
-            int c2 = 1 + ccomb(F2x, sa, fbC2, sb1);
-            int dd = swPm[s] + swG[s] + c2 + tail;  /* swPm = BIG when no prefix yet: never wins */
-            int b2 = dd < sbv;
-            slotBest[s] = b2 ? dd : sbv; slotI[s] = b2 ? swPmi[s] : siv; slotJ[s] = b2 ? x : sjv;
-            int e = ltA ? (ltU ? e11 : e10) : (ltU ? e01 : e00);
-            int pre = Px + c1 - fc - (swG[s] + e);
-            int fbs1 = isA2B ? cmq(cmq(dstRaw + ltU, sb1) - Rv, sb1) : cmq(srcIdx + ltU - Rv, sb1);
-            int Ax = pre + 1 + ccomb(faS1, sa, fbs1, sb1);
-            int b3 = Ax < swPm[s];
-            swPm[s] = b3 ? Ax : swPm[s]; swPmi[s] = b3 ? x : swPmi[s];
+            int Rm = sb ? (Rv < sb ? Rv : Rv - sb) : 0;
+            int fb1 = sb ? mq(Rm - tbOld, sb) : 0;
+            int c1 = 1 + comb_cost(fa1, sa1, fb1, sb, NULL);
+            int lbJ = imin(swPmi[s] >= 0 ? swPm[s] + swG[s] + lbC2 : INT_MAX / 2, R->P[x] + c1 + cc) + lbTail;
+            if (lbJ < bestSoFar) {
+                int tb1 = sb ? mq(f->lbB + ltA, sb1) : 0;
+                int fbS2 = 0;
+                if (sb) fbS2 = f->t == 0 ? mq(mq(f->dstRaw, sb) - Rm, sb) : mq(f->srcIdx - Rm, sb);
+                int s2 = 1 + comb_cost(FS[x], sa + 1, fbS2, sb, NULL);
+                int tail = s2 + base;
+                int d = R->P[x] + c1 + cc + tail;
+                if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = x; slotJ[s] = x; }
+                if (swPmi[s] >= 0) {
+                    int fbC2 = mq(Rv - tb1, sb1);
+                    int c2 = 1 + comb_cost(F2[x], sa, fbC2, sb1, NULL);
+                    int dd = swPm[s] + swG[s] + c2 + tail;
+                    if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
+                }
+                if (slotBest[s] < bestSoFar) bestSoFar = slotBest[s];
+            }
+            int e = ev[ltA][ltU];
+            int pre = R->P[x] + c1 - f->c - (swG[s] + e);
+            if (pre + 1 < swPm[s]) {
+                int fbs1;
+                if (f->t == 0) { int sl = mq(f->dstRaw + ltU, sb1); fbs1 = mq(sl - Rv, sb1); }
+                else { int si = f->srcIdx + ltU; fbs1 = mq(si - Rv, sb1); }
+                int s1 = 1 + comb_cost(faS1, sa, fbs1, sb1, NULL);
+                int Ax = pre + s1;
+                if (Ax < swPm[s]) { swPm[s] = Ax; swPmi[s] = x; }
+            }
             swG[s] += e;
         }
         if (f->t == 0) { for (int s = pU; s < m; s++) swR[s]++; }

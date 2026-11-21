@@ -3,15 +3,15 @@
 An autonomous research project to build the strongest possible push_swap solver: as few
 operations as possible, always correct.
 
-## Results (held-out inputs `research/data/sets/eval2_*`, median operation count)
+## Results (held-out inputs eval3+eval4, 60 cases per size, median operation count; human implementation measured on eval2)
 
 | N | This repository (C version) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
 |---:|---:|---:|---:|
-| 100 | 375 (about 9 s) | 366.5 (about 16 s) | 608 |
-| 500 | 3029.5 (about 37 s) | 2980 (about 45 s) | 5349 |
+| 100 | 365 (about 14 s) | 363.5 (about 17 s) | 608 |
+| 500 | **2923** (about 37 s) | 2967.5 (about 48 s) | 5349 |
 
 - n ≤ 8 is solved optimally by exhaustive search (n=3: at most 2 ops, n=5: at most 8 ops).
-- The median still trails the reference slightly. At N=500 this solver wins about 40% of cases, with a large spread.
+- N=500: on average 26.5 operations fewer than the reference (p = 0.004, 39 wins out of 60). N=100: on par.
 - Full figures, conditions and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
 
 ## Quick start (C version)

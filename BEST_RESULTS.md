@@ -1,4 +1,28 @@
-# BEST RESULTS (as of 2026-11-21, session 1)
+# BEST RESULTS (updated 2026-11-21, v4)
+
+## Final held-out evaluation v4 (C version, fresh seeds eval3 + eval4 = 60 cases per size)
+Identical inputs, 4 concurrent processes on a 4-vCPU container. Default settings (15 s for N=100, 40 s for N=500).
+
+| N | Solver | Median | Mean | Std | Max | s/case | Peak RSS |
+|---:|---|---:|---:|---:|---:|---:|---:|
+| 100 | **PSIG v4 (C)** | 365.0 | 364.5 | 9.6 | 392 | 13.6 | 56 MB |
+| 100 | reference | 363.5 | 363.9 | 9.3 | 388 | 16.9 | 355 MB |
+| 500 | **PSIG v4 (C)** | **2923.0** | **2941.0** | 66.3 | 3097 | 36.5 | 87 MB |
+| 500 | reference | 2967.5 | 2967.5 | 34.3 | 3041 | 47.7 | 415 MB |
+
+Paired comparison (ours − reference):
+- N=100: 28 wins / 1 tie / 31 losses, mean diff +0.6, bootstrap 95% CI [−2.5, +3.8], sign-flip p = 0.73 → **parity**.
+- N=500: 39 wins / 21 losses, mean diff **−26.5**, 95% CI [−44.1, −9.1], sign-flip p = **0.004** →
+  **statistically credible improvement**. Our spread is still about twice the reference's.
+
+### Verdict (v4)
+- **N=500: PSIG v4 (C) is the best known solver** (promotion criteria met: correctness verified, identical inputs,
+  p = 0.004, faster and smaller than the reference). The source is in `research/c/`, commit `d9d3dc3`.
+- **N=100: tie** between PSIG v4 and the reference.
+
+---
+Earlier evaluations (kept for history):
+
 
 ## Final held-out evaluation v2 (fresh seeds `eval2_*`, never inspected during development)
 Same inputs for both solvers, 4 concurrent processes on a 4-vCPU container.

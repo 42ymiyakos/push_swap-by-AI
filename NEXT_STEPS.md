@@ -1,4 +1,4 @@
-# NEXT STEPS (updated 2026-11-21, after v6)
+# NEXT STEPS (updated 2026-11-21, after v13)
 
 ## Current status (resume from here)
 - **Best solver: PSIG v13 (C)** in `research/c/` (commit `b9142b0`). Same algorithm as the C++ research version

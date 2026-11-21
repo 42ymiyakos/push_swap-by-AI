@@ -112,3 +112,9 @@
     → not adopted (option kept, default 1).
 52. v10 (C, identical output): with A2A on, the full_cost calls after the destroy and after each query-destroy removal are unused
     (the cost is recomputed after every reinsertion) → removed; a few % faster.
+53. N=500 parameter re-tune vs v10 base (seglen 10/24, pqd 0.3/0.7): −4..−8, none significant → defaults unchanged.
+    N=500 time-limited runs vary run to run by about ±5 in mean over 28 cases.
+54. Init stage timing (C v10): N=500 stage1 0.43 s, stage2 (30 beams width 20) 3.0 s, stage3 (3 beams width 300) 4.7 s;
+    N=100 total 3.6 s. Beam profile: qsort ≈ 25% → v11: stamp dedup, top-k selection, inline merge sort (identical output):
+    init 9.6 → 5.0 s (N=500), 4.4 → 2.9 s (N=100). Dev: N=500 −3.2 (20 W / 5 L, p = 0.011), N=100 unchanged.
+55. With the faster beam: final beam 500 −9.6 (p = 0.43), stage-2 beam 40 −4.4 (p = 0.66) on 28 cases → 60-case test running.

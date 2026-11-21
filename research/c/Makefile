@@ -1,6 +1,6 @@
 NAME    = push_swap
 CC      ?= cc
-CFLAGS  ?= -O2 -std=gnu11 -Wall -Wextra
+CFLAGS  ?= -O3 -march=native -std=gnu11 -Wall -Wextra
 SRCS    = main.c util.c rep.c construct.c beam.c exact.c peep.c ig.c
 OBJS    = $(SRCS:.c=.o)
 

@@ -33,7 +33,7 @@ static int prev_set(const BS *b, int i, int n) {
     return -1;
 }
 
-typedef struct { BS a, b; int ta, tb, cost, nA, nB, parent; int16_t v; uint8_t mode; int fa, fb; float ev; } Node;
+typedef struct { BS a, b, bv; int ta, tb, cost, nA, nB, parent; int16_t v; uint8_t mode; int fa, fb; float ev; } Node;
 typedef struct { float ev; int node; } Cand;
 typedef struct { int c, pos, fa, fb, mode; } Ent;
 
@@ -52,9 +52,43 @@ static int cmp_cand(const void *x, const void *y) {
 static float heur(const Node *s, int n, int m, const int *Bvals, int *pts) {
     int L = s->nA;
     if (L <= 1) return 0.0f;
-    BS bv; memset(&bv, 0, sizeof bv);
-    for (int i = 0; i < m; i++) if (getb(&s->b, i)) setb(&bv, Bvals[i]);
+    const BS bv = s->bv;  /* values still in B (maintained incrementally) */
+    (void)m; (void)Bvals;
     int np = 0;
+    if (s->nB < s->nA) {
+        /* marked ranks = ranks of the successor slot of every B value (same set as the A scan below) */
+        int st = cnt(&s->a, 0, s->ta), e = 0, wrapn = 0;
+        int minA = next_set(&s->a, 0, n);
+        for (int w = 0; w < BW; w++) {
+            uint64_t bits = bv.w[w];
+            while (bits) {
+                int v = (w << 6) + __builtin_ctzll(bits); bits &= bits - 1;
+                if (v >= n) break;
+                int sv = v + 1 < n ? next_set(&s->a, v + 1, n) : -1;
+                if (sv < 0 || sv <= v) { wrapn = 1; continue; }  /* successor wraps to the minimum */
+                int r = cnt(&s->a, 0, sv);
+                if (np == 0 || pts[np - 1] != r) pts[np++] = r;
+            }
+        }
+        if (wrapn) { (void)minA; memmove(pts + 1, pts, sizeof(int) * np); if (np == 0 || pts[1] != 0) { pts[0] = 0; np++; } else memmove(pts, pts + 1, sizeof(int) * np); }
+        if (np == 0) { int d = st; return (float)imin(d, L - d); }
+        for (int z = 0; z < 2; z++) {
+            int x = z == 0 ? st : e, p = np;
+            while (p > 0 && pts[p - 1] > x) { pts[p] = pts[p - 1]; p--; }
+            pts[p] = x; np++;
+        }
+        int k = 0;
+        for (int i = 0; i < np; i++) if (k == 0 || pts[i] != pts[k - 1]) pts[k++] = pts[i];
+        int gmax = -1, gi = 0;
+        for (int i = 0; i < k; i++) {
+            int g = (i + 1 < k ? pts[i + 1] : pts[0] + L) - pts[i];
+            if (g > gmax) { gmax = g; gi = i; }
+        }
+        int l = pts[(gi + 1) % k], arc = L - gmax;
+        int os = ((st - l) % L + L) % L, oe = ((e - l) % L + L) % L;
+        int c1 = os + arc + (arc - oe), c2 = (arc - os) + arc + oe;
+        return (float)imin(c1, c2);
+    }
     int first = next_set(&s->a, 0, n), prevv = -1, rk = 0, st = 0, e = 0;
     int lastv = prev_set(&s->a, n - 1, n);
     for (int x = first; x >= 0;) {
@@ -68,8 +102,12 @@ static float heur(const Node *s, int n, int m, const int *Bvals, int *pts) {
         x = nx;
     }
     if (np == 0) { int d = st; return (float)imin(d, L - d); }
-    pts[np++] = st; pts[np++] = e;
-    qsort(pts, np, sizeof(int), cmp_int);
+    /* pts is ascending; insert st and e keeping order, then drop duplicates */
+    for (int z = 0; z < 2; z++) {
+        int x = z == 0 ? st : e, p = np;
+        while (p > 0 && pts[p - 1] > x) { pts[p] = pts[p - 1]; p--; }
+        pts[p] = x; np++;
+    }
     int k = 0;
     for (int i = 0; i < np; i++) if (k == 0 || pts[i] != pts[k - 1]) pts[k++] = pts[i];
     int gmax = -1, gi = 0;
@@ -90,7 +128,7 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
     Node *all = xmalloc(sizeof(Node) * allCap);
     Node root; memset(&root, 0, sizeof root);
     for (int i = 0; i < na; i++) setb(&root.a, Avals[i]);
-    for (int i = 0; i < m; i++) setb(&root.b, i);
+    for (int i = 0; i < m; i++) { setb(&root.b, i); setb(&root.bv, Bvals[i]); }
     root.ta = topA; root.tb = 0; root.cost = 0; root.nA = na; root.nB = m; root.parent = -1;
     all[nall++] = root;
     int *layer = xmalloc(sizeof(int) * (width + 1)), nl = 1, *nxt = xmalloc(sizeof(int) * (width + 1));
@@ -136,7 +174,7 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
                 Ent *e = &es[k];
                 Node ch = s;
                 int v = Bvals[e->pos];
-                clrb(&ch.b, e->pos); ch.nB--;
+                clrb(&ch.b, e->pos); clrb(&ch.bv, Bvals[e->pos]); ch.nB--;
                 setb(&ch.a, v); ch.nA++; ch.ta = v;
                 ch.tb = ch.nB ? next_set(&ch.b, (e->pos + 1) % m, m) : 0;
                 ch.cost = s.cost + e->c + 1; ch.parent = id; ch.v = (int16_t)v; ch.mode = (uint8_t)e->mode; ch.fa = e->fa; ch.fb = e->fb;

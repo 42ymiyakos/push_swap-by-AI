@@ -1,12 +1,12 @@
-# NEXT STEPS (updated 2026-11-21, after v13)
+# NEXT STEPS (updated 2026-11-21, after v14)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v13 (C)** in `research/c/` (commit `b9142b0`). Same algorithm as the C++ research version
+- **Best solver: PSIG v14 (C)** in `research/c/` (commit `0208c72`; v13 algorithm, 45 s default for n > 300). Same algorithm as the C++ research version
   `research/src/psig.cpp`. With `--iters=N` the two are byte-identical: check with
   `research/tools/cmp_c_cpp.sh SET NCASES ITERS` after **every** change to either version. (C-only speed-ups must keep identical output.)
 - Held-out results (eval3 + eval4, 60 cases per size; reference CSVs `eval3_ref_*`, `eval4_ref_*` exist):
   - N=100: 356.5 median / 357.7 mean vs 363.5 / 363.9 → −6.18, p = 0.0003 (48 W / 2 T / 10 L).
-  - N=500: 2849.5 / 2876.0 vs 2967.5 / 2967.5 → −91.5, p < 0.0001 (49 W / 11 L).
+  - N=500 (v14, 45 s): 2841.5 / 2870.4 vs 2967.5 / 2967.5 → −97.2, p < 0.0001 (49 W / 11 L).
 - Defaults: 15 s (n ≤ 150), 25 s (n ≤ 300), 45 s otherwise; irot 16; ubw 1; final beam 1000 / 500; kick 200 (×2); A2A on.
 - Machine: 4 vCPU only. At most 4 solver processes; nothing heavy while a time-limited benchmark runs.
 - Dev sets: `dev40_u100` (`--limit 40`), `dev40_u500` (`--offset 12 --limit 28`), `dev60_u500` (60 cases) for N=500 decisions.
@@ -40,6 +40,5 @@
    or skipping the refine solve when the sweep winner equals the upper-bound slot. Every change must keep C/C++ identical.
 3. **N=100 significance**: more search diversity per unit time (destroy operators: B-order segments, A-position ranges),
    and A2A with 2 steps (`a2amax`) re-tested on dev.
-4. Time budget alignment: the reference takes ~48 s at N=500 and ~17 s at N=100. Decide whether to match it
-   (expected −10..−30 at N=500) or keep the current, shorter defaults.
+4. Time budget alignment: done in v14 (45 s gave −5.7 at N=500; 16 s gave nothing at N=100).
 5. Housekeeping: README/ALGORITHM_NOTES sections for v3–v6 (chunk-count search, equal-count chunks, A2A, shared prep).

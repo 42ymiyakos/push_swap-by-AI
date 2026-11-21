@@ -70,12 +70,13 @@ int main(int argc, char **argv) {
         chunk_construct(a0, n, K, m, 0, 2, &ops);
         print_ops(&ops); ov_free(&ops); free(K); free(a0); return 0;
     }
-    if (P.time < 0) P.time = n <= 150 ? 10.0 : (n <= 300 ? 20.0 : 40.0);
-    int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2;
-    if (n > 300) { P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 100; bws = 0; }
+    if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 40.0);
+    int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2, kper = 3, bwm = 100;
+    int mlist4[5] = {2, 3, 4, 0, 0}, nm = 3;
+    if (n > 150 && n <= 300) { int t[4] = {3, 4, 5, 6}; memcpy(mlist4, t, sizeof t); nm = 4; }
+    if (n > 300) { P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 300; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;
     double t0g = now_sec();
-    int m = n <= 150 ? 2 : (n <= 300 ? 4 : 6);
 
     /* candidate K sets: LIS from many starts (distinct), screened with a small beam */
     int starts = imin(n, nlis), nK = 0;
@@ -88,16 +89,36 @@ int main(int argc, char **argv) {
         for (int k = 0; k < nK; k++) if (!memcmp(Ks[k], K, n)) { dup = 1; break; }
         if (dup) free(K); else Ks[nK++] = K;
     }
-    SC *sc = xmalloc(sizeof(SC) * nK);
+    /* stage 1: greedy screening per chunk count; stage 2: small beam (kper per count); stage 3: full beam */
+    SC *sc = xmalloc(sizeof(SC) * nK), *st2 = xmalloc(sizeof(SC) * (nm * kper + 1));
+    int *st2m = xmalloc(sizeof(int) * (nm * kper + 1)), n2 = 0;
     OpVec tmp; ov_init(&tmp);
-    for (int k = 0; k < nK; k++) { chunk_construct(a0, n, Ks[k], m, bws, bc, &tmp); sc[k].size = tmp.n; sc[k].k = k; }
-    qsort(sc, nK, sizeof(SC), cmp_sc);
+    for (int mi = 0; mi < nm; mi++) {
+        int mm = mlist4[mi];
+        for (int k = 0; k < nK; k++) { chunk_construct(a0, n, Ks[k], mm, bws, bc, &tmp); sc[k].size = tmp.n; sc[k].k = k; }
+        qsort(sc, nK, sizeof(SC), cmp_sc);
+        for (int k = 0; k < imin(nK, kper); k++) {
+            int sz = sc[k].size;
+            if (bwm > 0) { chunk_construct(a0, n, Ks[sc[k].k], mm, bwm, bc, &tmp); sz = tmp.n; }
+            st2[n2].size = sz; st2[n2].k = sc[k].k; st2m[n2] = mm; n2++;
+        }
+    }
+    /* sort (size, k, m) */
+    for (int x = 1; x < n2; x++) {
+        SC e = st2[x]; int em = st2m[x], y = x - 1;
+        while (y >= 0 && (st2[y].size > e.size || (st2[y].size == e.size && (st2[y].k > e.k || (st2[y].k == e.k && st2m[y] > em))))) {
+            st2[y + 1] = st2[y]; st2m[y + 1] = st2m[y]; y--;
+        }
+        st2[y + 1] = e; st2m[y + 1] = em;
+    }
     OpVec base; ov_init(&base);
     int haveBase = 0;
-    for (int k = 0; k < imin(nK, ktop); k++) {
-        chunk_construct(a0, n, Ks[sc[k].k], m, bw, bc, &tmp);
+    for (int k = 0; k < imin(n2, ktop); k++) {
+        chunk_construct(a0, n, Ks[st2[k].k], st2m[k], bw, bc, &tmp);
         if (!haveBase || tmp.n < base.n) { ov_copy(&base, &tmp); haveBase = 1; }
     }
+    sc[0].k = st2[0].k;
+    free(st2); free(st2m);
     int lis_len = 0;
     for (int i = 0; i < n; i++) lis_len += Ks[sc[0].k][i];
     for (int k = 0; k < nK; k++) free(Ks[k]);

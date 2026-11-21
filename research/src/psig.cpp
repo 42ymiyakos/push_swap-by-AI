@@ -295,14 +295,7 @@ struct IG {
     }
 };
 
-int main(int argc, char **argv) {
-    Params P;
-    // size-dependent defaults (overridable): tuned on train/dev sets, see EXPERIMENTS.md
-    P.sweep = 1; P.pqd = 0.5; P.time = -1;
-    int first = 1;
-    bool setLarge = false, setPeep = false;
-    for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
-        std::string a = argv[first];
+static bool apply_opt(Params &P, const std::string &a) {
         auto val = [&](const char *k) -> const char * { size_t L = strlen(k); return a.compare(0, L, k) == 0 ? a.c_str() + L : nullptr; };
         if (auto x = val("--time=")) P.time = atof(x);
         else if (auto x = val("--iters=")) P.iters = atoll(x);
@@ -338,9 +331,19 @@ int main(int argc, char **argv) {
         else if (auto x = val("--lahc=")) P.lahc = atoi(x);
         else if (auto x = val("--verbose=")) P.verbose = atoi(x);
         else if (auto x = val("--check=")) P.check = atoi(x);
-        else { fprintf(stderr, "Error\n"); return 1; }
-        if (a.rfind("--peep", 0) == 0) setPeep = true;
-        if (a.rfind("--seglen", 0) == 0 || a.rfind("--nlis", 0) == 0 || a.rfind("--bw", 0) == 0) setLarge = true;
+        else return false;
+    return true;
+}
+
+int main(int argc, char **argv) {
+    Params P;
+    // size-dependent defaults (overridable): tuned on train/dev sets, see EXPERIMENTS.md
+    P.sweep = 1; P.pqd = 0.5; P.time = -1;
+    int first = 1;
+    std::vector<std::string> optv;
+    for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
+        optv.push_back(argv[first]);
+        Params tmp; if (!apply_opt(tmp, argv[first])) { fprintf(stderr, "Error\n"); return 1; }
     }
     std::vector<long long> vals;
     if (!parse_args(argc, argv, first, vals)) { fprintf(stderr, "Error\n"); return 1; }
@@ -354,10 +357,11 @@ int main(int argc, char **argv) {
         Rng rr(1); auto K = circular_lis(a0, rr);
         print_ops(chunk_construct(a0, K, std::max(2, n / 80), 0)); return 0;
     }
-    if (P.time < 0) P.time = n <= 150 ? 10.0 : (n <= 300 ? 20.0 : 40.0);
-    if (n > 300 && !setLarge) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 30; P.ktop = 3; P.bw = 100; P.bws = 0; P.chunkList = {4, 6, 8, 10, 12}; P.kper = 3; P.bwm = 20; }
-    if (n <= 300 && P.chunkList.empty()) { P.chunkList = n <= 150 ? std::vector<int>{2, 3, 4} : std::vector<int>{3, 4, 5, 6}; P.kper = 3; P.bwm = 100; }
-    if (!setPeep) P.peepK = n <= 150 ? std::vector<int>{4, 6, 8} : std::vector<int>{4, 6};
+    if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 40.0);
+    if (n > 300) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 30; P.ktop = 3; P.bw = 300; P.bws = 0; P.chunkList = {4, 6, 8, 10, 12}; P.kper = 3; P.bwm = 20; }
+    if (n <= 300) { P.chunkList = n <= 150 ? std::vector<int>{2, 3, 4} : std::vector<int>{3, 4, 5, 6}; P.kper = 3; P.bwm = 100; }
+    P.peepK = n <= 150 ? std::vector<int>{4, 6, 8} : std::vector<int>{4, 6};
+    for (auto &o : optv) apply_opt(P, o);  // explicit options override size-dependent defaults
     double t0g = now_sec();
     Rng rng(P.seed * 0x9E3779B97F4A7C15ull + 12345);
     int m = P.chunks > 0 ? P.chunks : (n <= 150 ? 2 : (n <= 300 ? 4 : 6));

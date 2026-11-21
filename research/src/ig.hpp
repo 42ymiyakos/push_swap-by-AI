@@ -30,6 +30,8 @@ struct Reinserter {
     ll finAnc = 0; int finLb = 0;
 
     static inline int md(int x, int m) { return m > 0 ? ((x % m) + m) % m : 0; }
+    // fast cyclic reduction for x in (-m, 2m)
+    static inline int mq(int x, int m) { x = x < 0 ? x + m : x; x = x >= m ? x - m : x; return m > 0 ? x : 0; }
 
     // Pass over the current solution recording per-query information and candidate ranks.
     void pass(const Rep &r, ll EkI, const std::vector<ll> &Eb, const std::vector<ll> &Et) {
@@ -106,6 +108,7 @@ struct Reinserter {
 
     // r: current solution (v absent). Candidate encoded keys for B (Eb) and A targets (Et).
     int tmode = 1, t0 = 0, topb = 3;
+    bool tOnly = false;
     int iHi = INT_MAX, jLo = 0;  // constraints: A2B before old query i <= iHi, B2A before old query j >= jLo
     Best solve(const Rep &r, int v, const std::vector<ll> &Eb, const std::vector<ll> &Et, bool keepOK, bool vBeforeFirst) {
         ll EkI = r.ik[v] * 1024 + v;
@@ -154,6 +157,7 @@ struct Reinserter {
                 FC[j] = sa ? md(md(T[j], sa) - tA, sa) : 0;
             }
         }
+        if (tOnly) return best;
         G.resize(Q + 1); Aarr.resize(Q + 1);
         bFbC2.resize(Q + 1); bFbS2.resize(Q + 1); bC1ii.resize(Q + 1);
         auto prep_b = [&](int bi) {
@@ -228,6 +232,93 @@ struct Reinserter {
         }
         return best;
     }
+    // ---- all-slot sweep: B slots s = 0..m-1 (slot s lies between bl[s] and bl[s+1]); posOf[value] = bl index.
+    // Evaluates every slot with provisional target ti0, returns per-slot best deltas in slotBest.
+    std::vector<int> swR, swG, swPm, swPmi, slotBest, slotI, slotJ;
+    Best sweep(const Rep &r, int v, int m, const std::vector<int> &posOf, int ti0, bool vBeforeFirst) {
+        ll EkI = r.ik[v] * 1024 + v;
+        const std::vector<int> &SU = tSUF[ti0], &F2 = tFaC2[ti0], &FS = tFaS2[ti0], &FC = tFaCC[ti0];
+        int finA = tFinA[ti0], finB = tFinB[ti0];
+        swR.assign(m, 0); swG.assign(m, 0); swPm.assign(m, INT_MAX); swPmi.assign(m, -1);
+        slotBest.assign(m, INT_MAX); slotI.assign(m, -1); slotJ.assign(m, -1);
+        Best best{INT_MAX, -1, -1, -1, -1, false};
+        auto pv = [&](ll key) { return posOf[key & 1023]; };
+        for (int x = 0; x <= Q; x++) {
+            int sa = x < Q ? qi[x].sa : finSa, sb = x < Q ? qi[x].sb : 0;
+            int sa1 = sa + 1;
+            int ta1 = (x == 0 && vBeforeFirst) ? rkI[0] : (x < Q ? md(qi[x].lbA + (EkI < qi[x].ancA), sa1) : md(finLb + (EkI < finAnc), sa1));
+            int fa1 = md(rkI[x] - ta1, sa1);
+            int tbOld = x < Q ? md(qi[x].lbB, sb) : 0;
+            int tA = sa ? md(rkI[x], sa) : 0;
+            int cc = 1 + comb_cost(FC[x], sa, 0, sb + 1);
+            if (x == Q) {
+                int c2 = 1 + comb_cost(F2[Q], finSa, 0, 1);
+                for (int s = 0; s < m; s++) {
+                    int c1 = 1 + comb_cost(fa1, sa1, 0, 0);
+                    int d = P[Q] + c1 + cc + finB;
+                    if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
+                    if (swPmi[s] >= 0) {
+                        int dd = swPm[s] + swG[s] + c2 + finB;
+                        if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = Q; }
+                    }
+                }
+                break;
+            }
+            const QInfo &f = qi[x];
+            int sb1 = sb + 1;
+            int pA = sb ? pv(f.ancB) : -1;  // anchor position (bl index)
+            int u = (f.t == 0 ? f.dst : f.src) & 1023;
+            int pU = posOf[u];
+            int faOld = f.t == 0 ? md(f.srcIdx - md(f.lbA, sa), sa) : (sa ? md(md(f.dstRaw, sa) - md(f.lbA, sa), sa) : 0);
+            // A-part of s1: old query x with A top = element after v
+            int faS1 = f.t == 0 ? md(f.srcIdx - tA, sa) : (sa ? md(md(f.dstRaw, sa) - tA, sa) : 0);
+            // middle-effect e_x(s) for the 4 combinations of (s < pA, s < pU)
+            int ev[2][2];
+            for (int a = 0; a < 2; a++) for (int b2 = 0; b2 < 2; b2++) {
+                int tb_ = sb ? md(f.lbB + a, sb1) : 0;
+                int fb;
+                if (f.t == 0) { int sl = md(f.dstRaw + b2, sb1); fb = md(sl - tb_, sb1); }
+                else { int si = f.srcIdx + b2; fb = md(si - tb_, sb1); }
+                ev[a][b2] = 1 + comb_cost(faOld, sa, fb, sb1) - f.c;
+            }
+            int base = SU[x + 1] + finA - f.c;
+            for (int s = 0; s < m; s++) {
+                int R = swR[s];
+                int ltA = s < pA, ltU = s < pU;
+                // ---- j = x ----
+                int tb1 = sb ? mq(f.lbB + ltA, sb1) : 0;
+                int fbC2 = mq(R - tb1, sb1);
+                int c2 = 1 + comb_cost(F2[x], sa, fbC2, sb1);
+                int fbS2 = 0;
+                if (sb) { int Rm = R < sb ? R : R - sb; fbS2 = f.t == 0 ? mq(mq(f.dstRaw, sb) - Rm, sb) : mq(f.srcIdx - Rm, sb); }
+                int s2 = 1 + comb_cost(FS[x], sa + 1, fbS2, sb);
+                int tail = s2 + base;
+                int fb1 = sb ? mq((R < sb ? R : R - sb) - tbOld, sb) : 0;
+                int c1 = 1 + comb_cost(fa1, sa1, fb1, sb);
+                int d = P[x] + c1 + cc + tail;
+                if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = x; slotJ[s] = x; }
+                if (swPmi[s] >= 0) {
+                    int dd = swPm[s] + swG[s] + c2 + tail;
+                    if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
+                }
+                // ---- A_s(x) ----
+                int fbs1;
+                if (f.t == 0) { int sl = mq(f.dstRaw + ltU, sb1); fbs1 = mq(sl - R, sb1); }
+                else { int si = f.srcIdx + ltU; fbs1 = mq(si - R, sb1); }
+                int s1 = 1 + comb_cost(faS1, sa, fbs1, sb1);
+                int e = ev[ltA][ltU];
+                int Ax = P[x] + c1 + s1 - f.c - (swG[s] + e);
+                if (Ax < swPm[s]) { swPm[s] = Ax; swPmi[s] = x; }
+                swG[s] += e;
+            }
+            // rank update
+            if (f.t == 0) { for (int s = pU; s < m; s++) swR[s]++; }
+            else { for (int s = pU; s < m; s++) swR[s]--; }
+        }
+        for (int s = 0; s < m; s++) if (slotBest[s] < best.delta) best = {slotBest[s], slotI[s], slotJ[s], s, ti0, false};
+        return best;
+    }
+
     int minIdx = 0;
     std::vector<std::vector<int>> tSUF, tFaC2, tFaS2, tFaCC;
     std::vector<int> tFinA, tFinB, bFbC2, bFbS2, bC1ii;

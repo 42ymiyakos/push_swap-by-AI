@@ -22,10 +22,12 @@ struct Params {
     int ball = 1;        // 1: all B slots are candidates
     int tmode = 1, t0 = 0, topb = 3;
     int twophase = 0;
+    int brand = 2, ginit = 0, sweep = 0;
+    int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
     int seglen = 8;      // max query-segment length for destroy
     int rmax = 6;        // max random destroy count
     int vwin = 6;        // max value-range destroy width
-    int lahc = 200;      // LAHC history length
+    int lahc = 1;      // LAHC history length
     int verbose = 0;
     int check = 0;
 };
@@ -94,7 +96,11 @@ struct IG {
                             slotOn[(pos[w] - 1 + m) % m] = 1;   // before w
                         }
                     // a couple of random slots for diversity
-                    slotOn[rng.below(m)] = 1;
+                    for (int k = 0; k < P.brand; k++) slotOn[rng.below(m)] = 1;
+                    if (r.bk[v] != 0) {  // slots around the previous BOrder position of v
+                        int p0 = (int)(std::lower_bound(bl.begin(), bl.end(), v, [&](int x, int) { return r.bk[x] < r.bk[v]; }) - bl.begin());
+                        for (int d = -2; d <= 1; d++) slotOn[((p0 + d) % m + m) % m] = 1;
+                    }
                 }
             } else slotOn[0] = 1;
             std::vector<ll> Eb; bool bad = false;
@@ -143,7 +149,33 @@ struct IG {
                 int sp = 0; while (sp < (int)r.q.size() && r.q[sp].t == 0) sp++;
                 R.iHi = sp; R.jLo = sp;
             }
-            Reinserter::Best b = R.solve(r, v, Eb, Et, keepOK, vBeforeFirst);
+            Reinserter::Best b;
+            if (P.sweep && m >= 2) {
+                // all-slot sweep with provisional target, then exact refinement of the top slots
+                R.tOnly = true;
+                std::vector<ll> none;
+                R.solve(r, v, none, Et, false, vBeforeFirst);
+                R.tOnly = false;
+                int ti0 = std::min(std::max(P.t0, 0), (int)Et.size() - 1);
+                R.sweep(r, v, m, pos, ti0, vBeforeFirst);
+                std::vector<std::pair<int, int>> sc;
+                for (int q = 0; q < m; q++) sc.push_back({R.slotBest[q], q});
+                int k = std::min(m, P.topb);
+                std::partial_sort(sc.begin(), sc.begin() + k, sc.end());
+                std::vector<int> sel; for (int q = 0; q < k; q++) sel.push_back(sc[q].second);
+                std::sort(sel.begin(), sel.end());
+                std::vector<ll> Eb2;
+                for (int q : sel) {
+                    ll key;
+                    if (q < m - 1) { ll a = r.bk[bl[q]], bb = r.bk[bl[q + 1]]; key = a + (bb - a) / 2; }
+                    else key = r.bk[bl[m - 1]] + KEY_GAP;
+                    Eb2.push_back(key * 1024 + v);
+                }
+                int tm = R.tmode; R.tmode = 0;
+                b = R.solve(r, v, Eb2, Et, keepOK, vBeforeFirst);
+                R.tmode = tm;
+                Eb = Eb2;
+            } else b = R.solve(r, v, Eb, Et, keepOK, vBeforeFirst);
             lastInfo = b; lastQ = r.q.size(); lastVBF = vBeforeFirst;
             r.present[v] = 1;
             if (b.keep) { r.inK[v] = 1; r.tk[v] = r.ik[v]; }
@@ -246,6 +278,14 @@ int main(int argc, char **argv) {
         else if (auto x = val("--ball=")) P.ball = atoi(x);
         else if (auto x = val("--tmode=")) P.tmode = atoi(x);
         else if (auto x = val("--twophase=")) P.twophase = atoi(x);
+        else if (auto x = val("--brand=")) P.brand = atoi(x);
+        else if (auto x = val("--sweep=")) P.sweep = atoi(x);
+        else if (auto x = val("--ginit=")) P.ginit = atoi(x);
+        else if (auto x = val("--bw=")) P.bw = atoi(x);
+        else if (auto x = val("--bc=")) P.bc = atoi(x);
+        else if (auto x = val("--nlis=")) P.nlis = atoi(x);
+        else if (auto x = val("--bws=")) P.bws = atoi(x);
+        else if (auto x = val("--ktop=")) P.ktop = atoi(x);
         else if (auto x = val("--t0=")) P.t0 = atoi(x);
         else if (auto x = val("--topb=")) P.topb = atoi(x);
         else if (auto x = val("--seglen=")) P.seglen = atoi(x);
@@ -264,15 +304,46 @@ int main(int argc, char **argv) {
     bool sorted = true; for (int i = 0; i < n; i++) if (a0[i] != i) sorted = false;
     if (sorted) return 0;
     if (n <= 7) { print_ops(exact::solve(a0)); return 0; }
+    double t0g = now_sec();
     Rng rng(P.seed * 0x9E3779B97F4A7C15ull + 12345);
     int m = P.chunks > 0 ? P.chunks : (n <= 150 ? 2 : (n <= 300 ? 4 : 6));
     int lis_len;
-    std::vector<char> K = circular_lis(a0, rng, &lis_len);
-    std::vector<Op> base = chunk_construct(a0, K, m);
+    std::vector<Op> base;
+    {
+        // candidate K sets: LIS from many start positions (distinct), screened with a small beam
+        std::vector<std::vector<char>> Ks;
+        int starts = std::min(n, P.nlis);
+        for (int t = 0; t < starts; t++) {
+            int st = (int)((long long)t * n / starts);
+            auto K = lis_from(a0, st);
+            if (std::find(Ks.begin(), Ks.end(), K) == Ks.end()) Ks.push_back(K);
+        }
+        std::vector<std::pair<size_t, int>> sc;
+        for (int k = 0; k < (int)Ks.size(); k++) sc.push_back({chunk_construct(a0, Ks[k], m, P.bws, P.bc).size(), k});
+        std::sort(sc.begin(), sc.end());
+        for (int k = 0; k < std::min((int)sc.size(), P.ktop); k++) {
+            std::vector<Op> o = chunk_construct(a0, Ks[sc[k].second], m, P.bw, P.bc);
+            if (base.empty() || o.size() < base.size()) base = o;
+        }
+        lis_len = 0; for (char c : Ks[sc[0].second]) lis_len += c;
+    }
     Rep rep;
     if (!verify_ops(a0, base) || !convert(a0, base, rep)) { fprintf(stderr, "internal: constructor\n"); return 2; }
+    if (P.verbose) fprintf(stderr, "init=%zu valid=%d t=%.2f\n", base.size(), (int)verify_ops(a0, base), now_sec() - t0g);
     IG ig; ig.P = P; ig.rng = Rng(P.seed + 99);
     ig.R.tmode = P.tmode; ig.R.t0 = P.t0; ig.R.topb = P.topb;
+    if (P.ginit) {
+        Rep g = rep;
+        std::vector<int> order;
+        for (int v = 0; v < n; v++) if (!g.inK[v]) order.push_back(v);
+        for (int v : order) ig.remove_value(g, v);
+        if (P.ginit == 1) std::sort(order.begin(), order.end(), [](int a, int b) { return a > b; });
+        else for (int i = (int)order.size() - 1; i > 0; i--) std::swap(order[i], order[ig.rng.below(i + 1)]);
+        for (int v : order) { g.bk[v] = 0; ig.reinsert(g, v); }
+        int gc = full_cost(g);
+        if (P.verbose) fprintf(stderr, "ginit=%d t=%.2f\n", gc, now_sec() - t0g);
+        if (gc < full_cost(rep)) rep = g;
+    }
     double t0 = now_sec();
     ig.run(rep, P.time);
     std::vector<Op> ops = emit(ig.best);

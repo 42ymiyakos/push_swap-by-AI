@@ -30,6 +30,22 @@ static inline std::vector<char> circular_lis(const std::vector<int> &a, Rng &rng
     return best;
 }
 
+// Longest increasing subsequence reading A cyclically from position s (deterministic).
+static inline std::vector<char> lis_from(const std::vector<int> &a, int s) {
+    int n = a.size();
+    std::vector<int> tails, tailidx, prev(n);
+    for (int k = 0; k < n; k++) {
+        int i = (s + k) % n, x = a[i];
+        int p = (int)(std::lower_bound(tails.begin(), tails.end(), x) - tails.begin());
+        prev[i] = p ? tailidx[p - 1] : -1;
+        if (p == (int)tails.size()) { tails.push_back(x); tailidx.push_back(i); }
+        else { tails[p] = x; tailidx[p] = i; }
+    }
+    std::vector<char> m(n, 0);
+    for (int i = tailidx.back(); i >= 0; i = prev[i]) m[a[i]] = 1;
+    return m;
+}
+
 struct Builder {
     Sim s; std::vector<Op> ops;
     void op(Op o, int k = 1) { for (int i = 0; i < k; i++) { s.apply(o); ops.push_back(o); } }
@@ -37,7 +53,8 @@ struct Builder {
 
 // Chunk construction: non-K values are pushed to B in value-range chunks built middle-out
 // (top chunk / bottom chunk pairs), then greedily inserted back with minimal combined rotation.
-static inline std::vector<Op> chunk_construct(const std::vector<int> &a0, const std::vector<char> &inK, int m) {
+#include "beam.hpp"
+static inline std::vector<Op> chunk_construct(const std::vector<int> &a0, const std::vector<char> &inK, int m, int bw = 0, int bc = 2) {
     int n = a0.size();
     Builder b; for (int x : a0) b.s.a.push_back(x);
     auto chunk = [&](int v) { return m - 1 - (int)((long long)v * m / n); };  // 0 = largest values
@@ -75,6 +92,12 @@ static inline std::vector<Op> chunk_construct(const std::vector<int> &a0, const 
             b.op(PB);
             if (!top) pending++;
         }
+    }
+    if (bw > 0 && n <= 512) {
+        std::vector<int> Av(b.s.a.begin(), b.s.a.end()), Bv(b.s.b.begin(), b.s.b.end());
+        std::vector<Op> rest = beam::solve(n, Av, b.s.a.empty() ? 0 : b.s.a[0], Bv, bw, bc);
+        for (Op o : rest) b.op(o);
+        return b.ops;
     }
     // B -> A greedy insertion
     std::vector<int> idxA(n), succ(n);

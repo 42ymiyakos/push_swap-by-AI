@@ -28,7 +28,7 @@ struct Params {
     std::vector<int> peepK{};
     std::vector<int> chunkList{}; int kper = 3, bwm = 0;
     std::vector<int> cmodes{0, 1};
-    int isswap = 0, sstride = 1, ubw = 1, irot = 16, dbo = 0, dbias = 1, kick = 200, kickmul = 2;
+    int isswap = 0, sstride = 1, ubw = 1, irot = 16, dbo = 0, dbias = 1, kick = 200, kickmul = 2, kickbest = 0;
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -265,7 +265,8 @@ struct IG {
         long long lastImp = 0;
         for (iters = 0;; iters++) {
             if (P.iters >= 0 ? iters >= P.iters : ((iters & 7) == 0 && now_sec() - t0 > tlimit)) break;
-            Rep w = cur;
+            bool kickNow = P.kick > 0 && iters - lastImp >= P.kick;
+            Rep w = (kickNow && P.kickbest) ? best : cur;
             compute_vcost(w);
             // kick: after P.kick iterations without improving the current solution, one larger destroy is accepted unconditionally
             bool kick = P.kick > 0 && iters - lastImp >= P.kick;
@@ -348,6 +349,7 @@ static bool apply_opt(Params &P, const std::string &a) {
         else if (auto x = val("--dbias=")) P.dbias = atoi(x);
         else if (auto x = val("--kick=")) P.kick = atoi(x);
         else if (auto x = val("--kickmul=")) P.kickmul = atoi(x);
+        else if (auto x = val("--kickbest=")) P.kickbest = atoi(x);
         else if (auto x = val("--bwm=")) P.bwm = atoi(x);
         else if (auto x = val("--cmodes=")) { P.cmodes.clear(); for (const char *q = x; *q;) { P.cmodes.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }

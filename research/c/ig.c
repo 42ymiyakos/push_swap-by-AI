@@ -742,7 +742,7 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     long long it, lastImp = 0;
     for (it = 0;; it++) {
         if (P->iters >= 0 ? it >= P->iters : ((it & 7) == 0 && now_sec() - t0 > P->time)) break;
-        rep_copy(&w, &cur);
+        rep_copy(&w, (P->kick > 0 && it - lastImp >= P->kick && P->kickbest) ? best : &cur);
         compute_vcost(&g, &w);
         /* kick: after P->kick iterations without improving the current solution, one larger destroy is accepted */
         int kick = P->kick > 0 && it - lastImp >= P->kick;

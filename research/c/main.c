@@ -33,7 +33,7 @@ static int cmp_sc(const void *a, const void *b) {
 }
 
 int main(int argc, char **argv) {
-    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2};
+    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0};
     int first = 1, seglenSet = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--dbias=", 8)) P.dbias = atoi(a + 8);
         else if (!strncmp(a, "--kick=", 7)) P.kick = atoi(a + 7);
         else if (!strncmp(a, "--kickmul=", 10)) P.kickmul = atoi(a + 10);
+        else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
         else if (!strncmp(a, "--bw=", 5)) bwOpt = atoi(a + 5);
         else if (!strncmp(a, "--bwm=", 6)) bwmOpt = atoi(a + 6);
         else if (!strncmp(a, "--bws=", 6)) bwsOpt = atoi(a + 6);

@@ -93,3 +93,5 @@
 44. Final solutions: A rotation before a pb is small (mean 1.4, p99 9, max 21 at N=500) → option irot: in the sweep,
     A2B(v) is not considered at times where A's top is farther than irot from v. At fixed iterations irot=32 gives the same
     result 21% faster, irot=16 is 30% faster with similar quality, and irot=8 is worse. Dev test pending.
+45. irot dev results (time-limited, vs irot unlimited): N=100 no effect; N=500 irot=16 −10.75 (16 cases) and −5.4 (12 more),
+    combined −8.5 (17 W / 11 L, p = 0.10); irot=12 −9.4 on the second slice. Adopted irot=16 as default (v7).

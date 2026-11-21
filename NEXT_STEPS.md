@@ -1,6 +1,6 @@
 # NEXT STEPS (prioritized)
 
-1. **Human baseline**: get user authorization to clone/build `42ymiyakos/push_swap` (read-only) and benchmark it.
+1. ~~Human baseline~~ (measured, see BEST_RESULTS.md).
 2. ~~Peephole post-optimizer~~ (done: −4 / −15).
 3. **N=500 variance**: restarts with K diversity at N=500, adaptive time allocation (stop early when stagnant, restart).
    Original item 2:**Peephole post-optimizer** (bidirectional BFS over windows of the final command list, as in the

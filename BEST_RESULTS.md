@@ -10,6 +10,9 @@ Same inputs for both solvers, 4 concurrent processes on a 4-vCPU container.
 | 500 | reference (normal) | 12 | **2980.0** | 2986.8 | 55.2 | 2920 | 3157 | 2995.3 | 45.2 | 401 MB |
 | 500 | PSIG v2 (ours, 40 s) | 12 | 3076.0 | 3057.8 | 118.5 | **2892** | 3294 | 3204.3 | 38.2 | 52 MB |
 
+| 100 | human baseline (adaptive, default) | 20 | 608 | 807.4 | | 560 | 1084 | 1084 | 0.01 | <2 MB |
+| 500 | human baseline (adaptive, default) | 12 | 5349 | 5895.7 | | 5148 | 6784 | 6784 | 0.01 | <2 MB |
+
 Paired: N=100 ours better on 3/20 (1 tie), median diff +9.5; N=500 ours better on 5/12, median diff +101
 (very high variance: best case 2892 vs 2954, worst 3294 vs 2996).
 
@@ -31,4 +34,11 @@ n=10: mean 18.2 / max 21 (train set, 1 s); n=50: mean 150.2 / max 159.
 All runs verified by an independent strict checker; special distributions (sorted, reverse, nearly sorted,
 rotated, two runs, block-reversed, sawtooth, local shuffle) for n=3,5,10,100,500: all OK.
 Valgrind: 0 errors, 0 leaks; ASan/UBSan: clean. Invalid input → "Error" on stderr.
-Human baseline: not measured (access not authorized in this session).
+Human baseline (42ymiyakos/push_swap @b9d2c06, unmodified, built in a scratch copy):
+200-case `eval_*` sets — adaptive N=100 median 848 (538–1084), N=500 median 6784 (5025–6784);
+`--medium` N=100 582.5 (538–626), N=500 5227.5 (4994–5397); `--complex` 1084 / 6784 (fixed, radix);
+`--simple` 1459 / 32291.5. Small n (adaptive): n=3 max 2, n=5 max 10, n=10 max 65, n=50 max 467.
+All 200/200 correct. Finding: random inputs have disorder ≈ 0.5, exactly the DISORDER_HIGH threshold,
+so ~50% of random inputs go to radix (100/200 at N=100, 101/200 at N=500), which is why adaptive is
+bimodal and worse than `--medium` on half the cases.
+Vs human adaptive on eval2: PSIG v2 −38% (N=100, 376 vs 608) and −42% (N=500, 3076 vs 5349).

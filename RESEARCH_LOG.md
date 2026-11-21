@@ -35,3 +35,6 @@
 19. Peephole optimizer (meet-in-the-middle BFS on local stack windows): −4 @N=100, −15 @N=500.
 20. Final eval v2 (eval2, fresh): N=100 376 vs 366.5; N=500 3076 vs 2980 (std 118 vs 55; 5/12 wins).
     Conclusion: competitive but not better; main weakness at N=500 is run-to-run variance.
+21. Human baseline measured (user authorized clone): adaptive N=100 median 848 / N=500 6784 on 200-case
+    eval sets; --medium 582.5 / 5227.5. Adaptive sends ~50% of random inputs to radix (disorder ≈ 0.5 =
+    DISORDER_HIGH).

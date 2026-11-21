@@ -1,4 +1,5 @@
-# Human baseline (pending)
-The 42-validated human implementation appears to be `42ymiyakos/push_swap`. Attaching/cloning it was
-blocked by the session permission system, so it has NOT been measured. It must not be modified;
-once authorized, build it read-only (`make`) and run `bench/bench.py` with the same sets.
+# Human baseline: 42ymiyakos/push_swap @ b9d2c06 (42-validated)
+Cloned read-only to /home/user/42ymiyakos/push_swap; built UNMODIFIED from a scratch copy (`make`,
+cc -Wall -Wextra -Werror). Strategies: simple / medium (chunk) / complex (LSD radix) / adaptive (default:
+chooses by inversion ratio, LOW 0.2 / HIGH 0.5). Results: see BEST_RESULTS.md and
+bench/runs/human*_*.csv. Original source is not copied into this repository.

@@ -739,12 +739,17 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     int *hist = xmalloc(sizeof(int) * hl);
     for (int k = 0; k < hl; k++) hist[k] = curCost;
     double t0 = now_sec();
-    long long it;
+    long long it, lastImp = 0;
     for (it = 0;; it++) {
         if (P->iters >= 0 ? it >= P->iters : ((it & 7) == 0 && now_sec() - t0 > P->time)) break;
         rep_copy(&w, &cur);
         compute_vcost(&g, &w);
+        /* kick: after P->kick iterations without improving the current solution, one larger destroy is accepted */
+        int kick = P->kick > 0 && it - lastImp >= P->kick;
+        Params Pk = *P;
+        if (kick) { Pk.seglen *= P->kickmul; Pk.vwin *= P->kickmul; Pk.rmax *= P->kickmul; g.P = &Pk; }
         int nD = pick_destroy(&g, &w);
+        g.P = P;
         for (int k = 0; k < nD; k++) { g.dc[k] = g.vcost[g.D[k]]; g.ord[k] = k; }
         g_ig = &g; qsort(g.ord, nD, sizeof(int), cmp_ord);
         int qd = rng_uni(rng) < P->pqd;
@@ -763,7 +768,9 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
             if (P->a2a) c = full_cost(&w);  /* DP is approximate around A2A queries: use the exact cost */
         }
         int h = hist[it % hl];
-        if (c <= curCost || c <= h) {
+        if (kick) lastImp = it;
+        if (c < curCost) lastImp = it;
+        if (kick || c <= curCost || c <= h) {
             Rep t = cur; cur = w; w = t; curCost = c;
             if (c < *bestCost) { *bestCost = c; rep_copy(best, &cur); }
         }

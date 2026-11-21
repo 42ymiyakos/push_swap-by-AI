@@ -121,3 +121,7 @@
 56. 60-case dev (dev60_u500): final beam 500 vs 300: −8.8 (34 W / 25 L, p = 0.21), consistent with −9.6 on 28 cases → v12: bw=500 for N>300.
 57. N=100 greedy stage-1 screening (bws 0): init 423 → 429, final +1.7 (p = 0.21) → keep bws 20 at N ≤ 300.
 58. v12 held-out (60 cases): N=500 2849.5 median, −92.9 vs reference (49 W / 11 L); N=100 361.0, −2.9 (p = 0.07).
+59. Kick: after K iterations without improving the current solution, one destroy with seglen/vwin/rmax × M is accepted
+    unconditionally (the best is kept separately). Dev N=100 vs v12: K=200 M=3 −1.40 (p = 0.07), K=500 −1.18, K=100 −1.10,
+    K=200 M=2 −1.73 (24 W / 10 L, p = 0.033), M=5 +0.05. N=500 (K=200, M=2): −1.0 (11 W / 5 L, rarely triggers).
+    v13: kick 200 / ×2 default.

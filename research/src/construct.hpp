@@ -107,7 +107,16 @@ static inline std::vector<Op> chunk_construct(const std::vector<int> &a0, const 
     // chunk index (0 = largest values): equal value ranges (cmode 0) or equal counts of moved values (cmode 1)
     std::vector<int> crank(n, 0); int nmv = 0;
     for (int v = 0; v < n; v++) { crank[v] = nmv; if (!inK[v]) nmv++; }
-    auto chunk = [&](int v) { return g_cmode == 1 && nmv > 0 ? m - 1 - (int)((long long)crank[v] * m / nmv) : m - 1 - (int)((long long)v * m / n); };
+    // cmode 0: equal value ranges, 1: equal counts of moved values, 2: ranges shifted by half a chunk,
+    // 3/4: like 0/1 but mirrored (smallest values in the top chunk)
+    auto chunk = [&](int v) {
+        int c;
+        if ((g_cmode == 1 || g_cmode == 4) && nmv > 0) c = m - 1 - (int)((long long)crank[v] * m / nmv);
+        else if (g_cmode == 2) { long long t = (long long)v * m + n / 2; c = m - 1 - (int)std::min<long long>(m - 1, t / n); }
+        else c = m - 1 - (int)((long long)v * m / n);
+        if (g_cmode >= 3) c = m - 1 - c;
+        return c;
+    };
     // rounds: list of (top chunk, bottom chunk); -1 if none
     std::vector<std::pair<int, int>> rounds;
     if (m % 2 == 1) { rounds.push_back({m / 2, -1}); for (int r = 1; r <= m / 2; r++) rounds.push_back({m / 2 - r, m / 2 + r}); }

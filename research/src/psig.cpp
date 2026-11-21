@@ -28,7 +28,7 @@ struct Params {
     std::vector<int> peepK{};
     std::vector<int> chunkList{}; int kper = 3, bwm = 0;
     std::vector<int> cmodes{0, 1};
-    int isswap = 0, sstride = 1;
+    int isswap = 0, sstride = 1, ubw = 1, irot = -1;
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -163,7 +163,7 @@ struct IG {
                 // all-slot sweep with provisional target, then exact refinement of the top slots
                 // upper bound from value-neighbour slots (exact DP), also prepares per-target arrays
                 std::vector<ll> Eub;
-                for (int d = 1; d <= 2; d++) for (int sg = -1; sg <= 1; sg += 2) {
+                for (int d = 1; d <= P.ubw; d++) for (int sg = -1; sg <= 1; sg += 2) {
                     int w = v + sg * d;
                     if (w < 0 || w >= r.n || pos[w] < 0) continue;
                     for (int q : {pos[w], (pos[w] - 1 + m) % m}) {
@@ -321,6 +321,8 @@ static bool apply_opt(Params &P, const std::string &a) {
         else if (auto x = val("--kper=")) P.kper = atoi(x);
         else if (auto x = val("--isswap=")) P.isswap = atoi(x);
         else if (auto x = val("--sstride=")) P.sstride = atoi(x);
+        else if (auto x = val("--ubw=")) P.ubw = atoi(x);
+        else if (auto x = val("--irot=")) P.irot = atoi(x);
         else if (auto x = val("--bwm=")) P.bwm = atoi(x);
         else if (auto x = val("--cmodes=")) { P.cmodes.clear(); for (const char *q = x; *q;) { P.cmodes.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
@@ -420,7 +422,7 @@ int main(int argc, char **argv) {
     if (!verify_ops(a0, base) || !convert(a0, base, rep)) { fprintf(stderr, "internal: constructor\n"); return 2; }
     if (P.verbose) fprintf(stderr, "init=%zu valid=%d t=%.2f\n", base.size(), (int)verify_ops(a0, base), now_sec() - t0g);
     IG ig; ig.P = P; ig.rng = Rng(P.seed + 99);
-    ig.R.tmode = P.tmode; ig.R.t0 = P.t0; ig.R.topb = P.topb; ig.R.allowA2A = P.a2a; ig.R.a2aMax = P.a2amax;
+    ig.R.tmode = P.tmode; ig.R.t0 = P.t0; ig.R.topb = P.topb; ig.R.allowA2A = P.a2a; ig.R.a2aMax = P.a2amax; ig.R.irot = P.irot;
     if (P.ginit) {
         Rep g = rep;
         std::vector<int> order;

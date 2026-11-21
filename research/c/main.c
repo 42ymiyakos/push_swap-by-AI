@@ -33,7 +33,7 @@ static int cmp_sc(const void *a, const void *b) {
 }
 
 int main(int argc, char **argv) {
-    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1};
+    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, -1};
     int first = 1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
@@ -42,6 +42,8 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--seed=", 7)) P.seed = strtoull(a + 7, NULL, 10);
         else if (!strncmp(a, "--verbose=", 10)) P.verbose = atoi(a + 10);
         else if (!strncmp(a, "--a2a=", 6)) P.a2a = atoi(a + 6);
+        else if (!strncmp(a, "--ubw=", 6)) P.ubw = atoi(a + 6);
+        else if (!strncmp(a, "--irot=", 7)) P.irot = atoi(a + 7);
         else { fprintf(stderr, "Error\n"); return 1; }
     }
     ll *vals; int n;

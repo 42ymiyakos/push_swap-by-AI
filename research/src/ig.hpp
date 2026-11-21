@@ -125,7 +125,8 @@ struct Reinserter {
     struct Best { int delta; int i, j, bi, ti; bool keep; bool a2a = false; };
     bool allowA2A = false; int a2aMax = 3;
     int ubInit = INT_MAX;
-    int sstride = 1, soff = 0;  // coarse sweep: evaluate every sstride-th slot starting at soff
+    int sstride = 1, soff = 0;
+    int irot = -1;  // max A rotation for the A2B(v) time in the sweep (-1 = unlimited)  // coarse sweep: evaluate every sstride-th slot starting at soff
     std::vector<char> isA2Aq;
 
     // r: current solution (v absent). Candidate encoded keys for B (Eb) and A targets (Et).
@@ -300,12 +301,14 @@ struct Reinserter {
             int tbOld = x < Q ? md(qi[x].lbB, sb) : 0;
             int tA = sa ? md(rkI[x], sa) : 0;
             int cc = 1 + comb_cost(FC[x], sa, 0, sb + 1);
+            // A2B(v) at a time where A's top is far from v is not considered (irot >= 0)
+            bool farA = irot >= 0 && std::min(fa1, sa1 - fa1) > irot;
             if (x == Q) {
                 int c2 = 1 + comb_cost(F2[Q], finSa, 0, 1);
                 for (int s = soff; s < m; s += sstride) {
                     int c1 = 1 + comb_cost(fa1, sa1, 0, 0);
                     int d = P[Q] + c1 + cc + finB;
-                    if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
+                    if (!farA && d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
                     if (swPmi[s] >= 0) {
                         int dd = swPm[s] + swG[s] + c2 + finB;
                         if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = Q; }
@@ -339,6 +342,26 @@ struct Reinserter {
             int lbC2 = 1 + (sa ? std::min(F2[x], sa - F2[x]) : 0) - (f.pr + f.prr);
             if (lbC2 < 1) lbC2 = 1;
             int lbTail = lbS2 + base;
+            if (farA) {
+                for (int s = soff; s < m; s += sstride) {
+                    int ltA = s < pA, ltU = s < pU;
+                    if (swPmi[s] >= 0 && swPm[s] + swG[s] + lbC2 + lbTail < bestSoFar) {
+                        int R = swR[s];
+                        int Rm = sb ? (R < sb ? R : R - sb) : 0;
+                        int tb1 = sb ? mq(f.lbB + ltA, sb1) : 0;
+                        int fbS2 = 0;
+                        if (sb) fbS2 = f.t == 0 ? mq(mq(f.dstRaw, sb) - Rm, sb) : mq(f.srcIdx - Rm, sb);
+                        int s2 = isAA ? FS[x] : 1 + comb_cost(FS[x], sa + 1, fbS2, sb);
+                        int tail = s2 + base;
+                        int fbC2 = mq(R - tb1, sb1);
+                        int c2 = 1 + (sync ? comb_sync(F2[x], sa, fbC2, sb1, f.pr, f.prr) : comb_cost(F2[x], sa, fbC2, sb1));
+                        int dd = swPm[s] + swG[s] + c2 + tail;
+                        if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
+                        if (slotBest[s] < bestSoFar) bestSoFar = slotBest[s];
+                    }
+                    swG[s] += ev[ltA][ltU];
+                }
+            } else
             for (int s = soff; s < m; s += sstride) {
                 int R = swR[s];
                 int ltA = s < pA, ltU = s < pU;

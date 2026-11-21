@@ -86,3 +86,10 @@
     → identical output, ~10% faster. Peephole reserve 2/4 s → 0.8/1.0 s (measured 0.4–0.5 s).
     v6 vs v5 (dev, time-limited): N=500 −24.7 (16/16 wins, p < 0.001), N=100 −1.1 (11 W / 1 L, p = 0.002).
 41. FAILED: three-pass (vectorizable) sweep with snapshot pruning: not faster (19.5 → 20.1 s / 300 iterations).
+42. New chunk families (half-shifted ranges, mirrored ranges/counts): individually worse (3416–3450 vs 3339 mean init);
+    adding them to the pool gives −7..−8 for +3..5 s of init → rejected (worse than 5 ops/s).
+43. Upper-bound slots ±1 instead of ±2 value neighbours (ubw=1): about 13% faster IG; dev N=500 −1.7 (11 W / 4 L), N=100 −0.1 →
+    adopted as default.
+44. Final solutions: A rotation before a pb is small (mean 1.4, p99 9, max 21 at N=500) → option irot: in the sweep,
+    A2B(v) is not considered at times where A's top is farther than irot from v. At fixed iterations irot=32 gives the same
+    result 21% faster, irot=16 is 30% faster with similar quality, and irot=8 is worse. Dev test pending.

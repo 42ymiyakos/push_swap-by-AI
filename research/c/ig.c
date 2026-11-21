@@ -27,7 +27,7 @@ typedef struct {
     int nb, nt, W;  /* W = Q+1 row stride, Wt = Q+2 */
     int tmode, t0, topb, ubInit;
     int *tb; int tbcap;
-    int allowA2A, a2aMax;
+    int allowA2A, a2aMax, irot;
 } RI;
 
 static inline int md(int x, int m) { return m > 0 ? ((x % m) + m) % m : 0; }
@@ -336,12 +336,14 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
         int tbOld = x < Q ? md(R->qi[x].lbB, sb) : 0;
         int tA = sa ? md(R->rkI[x], sa) : 0;
         int cc = 1 + comb_cost(FC[x], sa, 0, sb + 1, NULL);
+        /* A2B(v) at a time where A's top is far from v is not considered (irot >= 0) */
+        int farA = R->irot >= 0 && imin(fa1, sa1 - fa1) > R->irot;
         if (x == Q) {
             int c2 = 1 + comb_cost(F2[Q], R->finSa, 0, 1, NULL);
             for (int s = 0; s < m; s++) {
                 int c1 = 1 + comb_cost(fa1, sa1, 0, 0, NULL);
                 int d = R->P[Q] + c1 + cc + finB;
-                if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
+                if (!farA && d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
                 if (swPmi[s] >= 0) {
                     int dd = swPm[s] + swG[s] + c2 + finB;
                     if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = Q; }
@@ -380,6 +382,26 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
             int fb1 = sb ? mq(Rm - tbOld, sb) : 0;
             Tc1[Rv] = 1 + (sync ? comb_sync(fa1, sa1, fb1, sb, f->pr, f->prr, NULL, NULL) : comb_cost(fa1, sa1, fb1, sb, NULL));
         }
+        if (farA) {
+            for (int s = 0; s < m; s++) {
+                int ltA = s < pA, ltU = s < pU;
+                if (swPmi[s] >= 0 && swPm[s] + swG[s] + lbC2 + lbTail < bestSoFar) {
+                    int Rv = swR[s];
+                    int Rm = sb ? (Rv < sb ? Rv : Rv - sb) : 0;
+                    int tb1 = sb ? mq(f->lbB + ltA, sb1) : 0;
+                    int fbS2 = 0;
+                    if (sb) fbS2 = f->t == 0 ? mq(mq(f->dstRaw, sb) - Rm, sb) : mq(f->srcIdx - Rm, sb);
+                    int s2 = isAA ? FS[x] : 1 + comb_cost(FS[x], sa + 1, fbS2, sb, NULL);
+                    int tail = s2 + base;
+                    int fbC2 = mq(Rv - tb1, sb1);
+                    int c2 = 1 + (sync ? comb_sync(F2[x], sa, fbC2, sb1, f->pr, f->prr, NULL, NULL) : comb_cost(F2[x], sa, fbC2, sb1, NULL));
+                    int dd = swPm[s] + swG[s] + c2 + tail;
+                    if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
+                    if (slotBest[s] < bestSoFar) bestSoFar = slotBest[s];
+                }
+                swG[s] += ev[ltA][ltU];
+            }
+        } else
         for (int s = 0; s < m; s++) {
             int Rv = swR[s];
             int ltA = s < pA, ltU = s < pU;
@@ -533,7 +555,7 @@ static int reinsert(IG *g, Rep *r, int v) {
         const ll *EbUsed = g->Eb;
         if (m >= 2) {
             int nub = 0, ubs[16];
-            for (int d = 1; d <= 2; d++) for (int sg = -1; sg <= 1; sg += 2) {
+            for (int d = 1; d <= g->P->ubw; d++) for (int sg = -1; sg <= 1; sg += 2) {
                 int w = v + sg * d;
                 if (w < 0 || w >= r->n || g->pos[w] < 0) continue;
                 int qs[2] = {g->pos[w], (g->pos[w] - 1 + m) % m};
@@ -634,7 +656,7 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     IG g; memset(&g, 0, sizeof g);
     g.P = P; g.rng = rng; g.n = n;
     g.R.tmode = 1; g.R.t0 = P->t0; g.R.topb = P->topb; g.R.ubInit = INT_MAX;
-    g.R.allowA2A = P->a2a; g.R.a2aMax = P->a2amax;
+    g.R.allowA2A = P->a2a; g.R.a2aMax = P->a2amax; g.R.irot = P->irot;
     st_alloc(&g.st, n);
     g.bl = xmalloc(sizeof(int) * n); g.pos = xmalloc(sizeof(int) * n); g.vcost = xmalloc(sizeof(int) * n);
     g.D = xmalloc(sizeof(int) * n); g.dc = xmalloc(sizeof(int) * n); g.ord = xmalloc(sizeof(int) * n); g.mark = xmalloc(n);

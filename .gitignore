@@ -7,3 +7,6 @@ __pycache__/
 /bin/
 /research/bin/
 /research/tools/checker
+/research/c/*.o
+/research/c/push_swap
+/research/c/push_swap_asan

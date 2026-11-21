@@ -71,9 +71,9 @@ static inline LStack mk(const std::deque<int> &d, int L) {
 }
 
 // BFS levels: map hash -> op path (as small vector)
-static inline void bfs(const LState &s0, int depth, bool inverse, std::unordered_map<uint64_t, std::vector<Op>> &seen) {
+static inline void bfs(const LState &s0, int depth, bool inverse, std::unordered_map<uint64_t, std::vector<Op>> &seen, std::vector<uint64_t> &order) {
     std::vector<std::pair<LState, std::vector<Op>>> cur{{s0, {}}}, nxt;
-    seen[hs(s0)] = {};
+    seen[hs(s0)] = {}; order.push_back(hs(s0));
     for (int d = 0; d < depth; d++) {
         nxt.clear();
         for (auto &pr : cur) for (int o = 0; o < NOPS; o++) {
@@ -82,7 +82,7 @@ static inline void bfs(const LState &s0, int depth, bool inverse, std::unordered
             uint64_t h = hs(t);
             if (seen.count(h)) continue;
             std::vector<Op> p = pr.second; p.push_back((Op)o);
-            seen[h] = p;
+            seen[h] = p; order.push_back(h);
             nxt.push_back({std::move(t), std::move(p)});
         }
         std::swap(cur, nxt);
@@ -101,16 +101,18 @@ static inline int optimize(const std::vector<int> &init, std::vector<Op> &ops, i
         for (int k = 0; k < K && ok; k++) ok = apply(sj, ops[i + k]);
         if (!ok) continue;
         std::unordered_map<uint64_t, std::vector<Op>> F, B;
-        bfs(si, d1, false, F);
-        bfs(sj, d2, true, B);
+        std::vector<uint64_t> fo, bo;
+        bfs(si, d1, false, F, fo);
+        bfs(sj, d2, true, B, bo);
         int best = K; std::vector<Op> rep;
-        for (auto &kv : B) {
-            auto it = F.find(kv.first);
+        for (uint64_t h : bo) {
+            const std::vector<Op> &bp = B[h];
+            auto it = F.find(h);
             if (it == F.end()) continue;
-            int len = it->second.size() + kv.second.size();
+            int len = it->second.size() + bp.size();
             if (len < best) {
                 best = len; rep = it->second;
-                for (int k = (int)kv.second.size() - 1; k >= 0; k--) rep.push_back(INV[kv.second[k]]);
+                for (int k = (int)bp.size() - 1; k >= 0; k--) rep.push_back(INV[bp[k]]);
             }
         }
         if (best < K) {

@@ -52,7 +52,7 @@ struct IG {
         // B: present non-K by bk
         std::vector<int> bl;
         for (int v = 0; v < r.n; v++) if (r.present[v] && !r.inK[v] && !r.isA2A[v]) bl.push_back(v);
-        std::sort(bl.begin(), bl.end(), [&](int x, int y) { return r.bk[x] < r.bk[y]; });
+        std::sort(bl.begin(), bl.end(), [&](int x, int y) { return r.bk[x] != r.bk[y] ? r.bk[x] < r.bk[y] : x < y; });
         for (size_t i = 0; i < bl.size(); i++) r.bk[bl[i]] = KEY_BASE + (ll)i * KEY_GAP;
         // A: init entries of all values + targets of present non-K
         struct E { ll k; int v; int kind; };
@@ -62,7 +62,7 @@ struct IG {
             al.push_back({r.ik[v], v, both ? 2 : 0});
             if (r.present[v] && !r.inK[v]) al.push_back({r.tk[v], v, 1});
         }
-        std::sort(al.begin(), al.end(), [](const E &x, const E &y) { return x.k < y.k; });
+        std::sort(al.begin(), al.end(), [](const E &x, const E &y) { return x.k != y.k ? x.k < y.k : (x.v != y.v ? x.v < y.v : x.kind < y.kind); });
         for (size_t i = 0; i < al.size(); i++) {
             ll k = KEY_BASE + (ll)i * KEY_GAP;
             if (al[i].kind == 0) r.ik[al[i].v] = k;
@@ -85,7 +85,7 @@ struct IG {
             // ---- B candidates ----
             std::vector<int> bl;
             for (int u = 0; u < r.n; u++) if (r.present[u] && !r.inK[u] && !r.isA2A[u]) bl.push_back(u);
-            std::sort(bl.begin(), bl.end(), [&](int x, int y) { return r.bk[x] < r.bk[y]; });
+            std::sort(bl.begin(), bl.end(), [&](int x, int y) { return r.bk[x] != r.bk[y] ? r.bk[x] < r.bk[y] : x < y; });
             int m = bl.size();
             std::vector<int> pos(r.n, -1);
             for (int k = 0; k < m; k++) pos[bl[k]] = k;
@@ -123,7 +123,7 @@ struct IG {
                 al.push_back({r.ik[u], u});  // init entries of all values (absent ones keep their slot)
                 if (r.present[u] && !r.inK[u]) al.push_back({r.tk[u], u});
             }
-            std::sort(al.begin(), al.end(), [](const E &x, const E &y) { return x.k < y.k; });
+            std::sort(al.begin(), al.end(), [](const E &x, const E &y) { return x.k != y.k ? x.k < y.k : x.v < y.v; });
             int L = al.size();
             int pv = -1, sv = -1;
             for (int d = 1; d < r.n; d++) { int w = (v - d + r.n) % r.n; if (r.present[w] && !r.ph[w]) { pv = w; break; } }
@@ -250,7 +250,7 @@ struct IG {
             for (size_t k = 0; k < D.size(); k++) dc[k] = vcost[D[k]];
             std::vector<int> ord(D.size());
             for (size_t k = 0; k < D.size(); k++) ord[k] = k;
-            std::sort(ord.begin(), ord.end(), [&](int x, int y) { return dc[x] > dc[y]; });
+            std::sort(ord.begin(), ord.end(), [&](int x, int y) { return dc[x] != dc[y] ? dc[x] > dc[y] : x < y; });
             bool qd = rng.uni() < P.pqd;
             for (int v : D) {
                 if (qd) {

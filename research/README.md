@@ -5,6 +5,7 @@ Top-level research documents live in the repository root (RESEARCH_PLAN.md, RESE
 EXPERIMENTS.md, ALGORITHM_NOTES.md, NEXT_STEPS.md, BEST_RESULTS.md, RESOURCE_USAGE.md).
 
 ## Layout
+- `c/` — **C implementation** of the solver (see c/README.md).
 - `src/` — solver sources (C++17, header-based): `psig.cpp` (best solver), `qsa.cpp` (SA prototype),
   `rep.hpp` (representation/decoder), `ig.hpp` (exact DP reinsertion), `construct.hpp`/`beam.hpp`
   (initial solutions), `exact.hpp` (BFS optimum for n<=8), `peephole.hpp` (window BFS post-optimizer).

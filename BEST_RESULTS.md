@@ -19,6 +19,13 @@ Paired: N=100 ours better on 3/20 (1 tie), median diff +9.5; N=500 ours better o
 Evaluation v1 (`eval_*`, PSIG before K-screening/peephole changes): N=100 378 vs 361 (2/20 wins);
 N=500 3026.5 vs 2985 (5/12 wins).
 
+## C port (research/c, default settings, eval2)
+| N | Cases | Median | Mean | Min | Max | s/case | Peak RSS |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 20 | 375.0 | 375.7 | 359 | 395 | 8.7 | 35 MB |
+| 500 | 12 | 3029.5 | 3026.8 | 2848 | 3245 | 36.7 | 20 MB |
+Byte-identical to the C++ version for fixed iteration budgets; ~13% faster per iteration.
+
 ## Verdict
 - **Best known solver overall: the reference (aaax8/push_swap @97d38fe), normal settings.**
   Our candidate does not meet the promotion criterion (statistically credible improvement).

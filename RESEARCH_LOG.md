@@ -38,3 +38,6 @@
 21. Human baseline measured (user authorized clone): adaptive N=100 median 848 / N=500 6784 on 200-case
     eval sets; --medium 582.5 / 5227.5. Adaptive sends ~50% of random inputs to radix (disorder ≈ 0.5 =
     DISORDER_HIGH).
+22. C port of PSIG (research/c, ~1300 lines, default configuration only). C++ sorts made deterministic
+    (tie-breaks in beam/IG/peephole) so both versions are byte-identical with fixed --iters (verified on
+    n=5,10,50,100,500 + special sets). ASan/UBSan/Valgrind clean. eval2: N=100 375, N=500 3029.5.

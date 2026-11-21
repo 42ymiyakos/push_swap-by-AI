@@ -124,7 +124,7 @@ static inline std::vector<Op> solve(int n, const std::vector<int> &Avals, int to
                 if (c1 < c) c = c1, md = 1; if (c2 < c) c = c2, md = 2; if (c3 < c) c = c3, md = 3;
                 es.push_back({c, pos, fa, fb, md});
             }
-            std::sort(es.begin(), es.end(), [](const E &x, const E &y) { return x.c < y.c; });
+            std::sort(es.begin(), es.end(), [](const E &x, const E &y) { return x.c != y.c ? x.c < y.c : x.pos < y.pos; });
             int take = 0;
             for (size_t k = 0; k < es.size(); k++) {
                 if (take >= cand && es[k].c > es[take - 1].c) break;
@@ -142,7 +142,7 @@ static inline std::vector<Op> solve(int n, const std::vector<int> &Avals, int to
             }
         }
         // dedup by (a,b,ta,tb) hash
-        std::sort(cands.begin(), cands.end(), [](const C &x, const C &y) { return x.ev < y.ev; });
+        std::sort(cands.begin(), cands.end(), [](const C &x, const C &y) { return x.ev != y.ev ? x.ev < y.ev : x.node < y.node; });
         nxt.clear();
         std::vector<uint64_t> hs;
         for (auto &c : cands) {

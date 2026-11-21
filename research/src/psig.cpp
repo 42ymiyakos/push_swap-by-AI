@@ -28,7 +28,7 @@ struct Params {
     std::vector<int> peepK{};
     std::vector<int> chunkList{}; int kper = 3, bwm = 0;
     std::vector<int> cmodes{0, 1};
-    int isswap = 0, sstride = 1, ubw = 1, irot = 16;
+    int isswap = 0, sstride = 1, ubw = 1, irot = 16, dbo = 0;
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -227,9 +227,18 @@ struct IG {
     std::vector<int> pick_destroy(const Rep &r) {
         std::vector<char> mark(r.n, 0);
         std::vector<int> D;
-        int mode = rng.below(10);
+        int mode = rng.below(10 + P.dbo);
         int Q = r.q.size();
-        if (mode < 6 && Q > 0) {
+        if (mode >= 10) {  // values adjacent in BOrder
+            std::vector<int> bl;
+            for (int v = 0; v < r.n; v++) if (r.present[v] && !r.inK[v] && !r.isA2A[v]) bl.push_back(v);
+            std::sort(bl.begin(), bl.end(), [&](int x, int y) { return r.bk[x] != r.bk[y] ? r.bk[x] < r.bk[y] : x < y; });
+            int m = bl.size();
+            if (m > 0) {
+                int L = 1 + rng.below(P.seglen), st = rng.below(m);
+                for (int k = 0; k < std::min(L, m); k++) { int v = bl[(st + k) % m]; if (!mark[v]) { mark[v] = 1; D.push_back(v); } }
+            }
+        } else if (mode < 6 && Q > 0) {
             int L = 1 + rng.below(P.seglen);
             int st = rng.below(Q);
             for (int k = st; k < std::min(Q, st + L); k++) { int v = r.q[k].v; if (!mark[v]) { mark[v] = 1; D.push_back(v); } }
@@ -323,6 +332,7 @@ static bool apply_opt(Params &P, const std::string &a) {
         else if (auto x = val("--sstride=")) P.sstride = atoi(x);
         else if (auto x = val("--ubw=")) P.ubw = atoi(x);
         else if (auto x = val("--irot=")) P.irot = atoi(x);
+        else if (auto x = val("--dbo=")) P.dbo = atoi(x);
         else if (auto x = val("--bwm=")) P.bwm = atoi(x);
         else if (auto x = val("--cmodes=")) { P.cmodes.clear(); for (const char *q = x; *q;) { P.cmodes.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }

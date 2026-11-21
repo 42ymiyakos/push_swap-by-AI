@@ -137,7 +137,7 @@ typedef struct {
     uint64_t seed;
     int t0, topb, seglen, rmax, vwin, lahc, verbose;
     double pqd;
-    int a2a, a2amax, ubw, irot;
+    int a2a, a2amax, ubw, irot, dbo;
 } Params;
 
 typedef struct { int delta, i, j, bi, ti, keep, a2a; } Best;

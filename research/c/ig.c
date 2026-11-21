@@ -670,8 +670,14 @@ static void compute_vcost(IG *g, const Rep *r) {
 static int pick_destroy(IG *g, const Rep *r) {
     Rng *rng = g->rng; const Params *P = g->P;
     memset(g->mark, 0, r->n);
-    int nD = 0, mode = rng_below(rng, 10), Q = r->nq;
-    if (mode < 6 && Q > 0) {
+    int nD = 0, mode = rng_below(rng, 10 + P->dbo), Q = r->nq;
+    if (mode >= 10) {  /* values adjacent in BOrder */
+        int m = build_bl(g, r);
+        if (m > 0) {
+            int L = 1 + rng_below(rng, P->seglen), st = rng_below(rng, m);
+            for (int k = 0; k < imin(L, m); k++) { int v = g->bl[(st + k) % m]; if (!g->mark[v]) { g->mark[v] = 1; g->D[nD++] = v; } }
+        }
+    } else if (mode < 6 && Q > 0) {
         int L = 1 + rng_below(rng, P->seglen), st = rng_below(rng, Q);
         for (int k = st; k < imin(Q, st + L); k++) { int v = r->q[k].v; if (!g->mark[v]) { g->mark[v] = 1; g->D[nD++] = v; } }
     } else if (mode < 8) {

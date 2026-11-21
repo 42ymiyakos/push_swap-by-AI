@@ -108,3 +108,7 @@
     fast path when there are no pending A2A rotations. About 12% faster at N=100.
 50. v9 vs v8 (dev): N=500 −4.3 (22 W / 0 L), N=100 −0.35 (6 W / 1 L) → main.
     FAILED: skipping the exact re-decode when no A2A query is present: solutions almost always contain A2A queries → no gain; reverted.
+51. Cost-biased destroy window (dbias = best of k random windows by value cost): N=100 +1.85 (k=2) / +2.58 (k=3), N=500 −3.8 (p = 0.52)
+    → not adopted (option kept, default 1).
+52. v10 (C, identical output): with A2A on, the full_cost calls after the destroy and after each query-destroy removal are unused
+    (the cost is recomputed after every reinsertion) → removed; a few % faster.

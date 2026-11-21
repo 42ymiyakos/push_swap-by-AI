@@ -694,6 +694,12 @@ static int pick_destroy(IG *g, const Rep *r) {
         }
     } else if (mode < 6 && Q > 0) {
         int L = 1 + rng_below(rng, P->seglen), st = rng_below(rng, Q);
+        for (int t = 1; t < P->dbias; t++) {  /* keep the most expensive of several random windows */
+            int st2 = rng_below(rng, Q), c1 = 0, c2 = 0;
+            for (int k = st; k < imin(Q, st + L); k++) c1 += g->vcost[r->q[k].v];
+            for (int k = st2; k < imin(Q, st2 + L); k++) c2 += g->vcost[r->q[k].v];
+            if (c2 > c1) st = st2;
+        }
         for (int k = st; k < imin(Q, st + L); k++) { int v = r->q[k].v; if (!g->mark[v]) { g->mark[v] = 1; g->D[nD++] = v; } }
     } else if (mode < 8) {
         int w = 1 + rng_below(rng, P->vwin), x = rng_below(rng, r->n);
@@ -747,10 +753,12 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
             if (qd) { rep_remove_queries(&w, v); w.inK[v] = 1; w.isA2A[v] = 0; w.tk[v] = w.ik[v]; w.ph[v] = 1; }
             else remove_value(&w, v);
         }
-        int c = full_cost(&w);
+        /* with A2A enabled the cost is recomputed exactly after every reinsertion, so the intermediate
+         * full_cost calls (after the destroy and after each query-destroy removal) are not needed */
+        int c = (P->a2a && nD > 0) ? 0 : full_cost(&w);
         for (int z = 0; z < nD; z++) {
             int v = g.D[g.ord[z]];
-            if (qd) { w.ph[v] = 0; remove_value(&w, v); c = full_cost(&w); }
+            if (qd) { w.ph[v] = 0; remove_value(&w, v); if (!P->a2a) c = full_cost(&w); }
             c += reinsert(&g, &w, v);
             if (P->a2a) c = full_cost(&w);  /* DP is approximate around A2A queries: use the exact cost */
         }

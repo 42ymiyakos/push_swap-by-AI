@@ -33,7 +33,7 @@ static int cmp_sc(const void *a, const void *b) {
 }
 
 int main(int argc, char **argv) {
-    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0};
+    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1};
     int first = 1, seglenSet = 0;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
@@ -45,6 +45,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--ubw=", 6)) P.ubw = atoi(a + 6);
         else if (!strncmp(a, "--irot=", 7)) P.irot = atoi(a + 7);
         else if (!strncmp(a, "--dbo=", 6)) P.dbo = atoi(a + 6);
+        else if (!strncmp(a, "--dbias=", 8)) P.dbias = atoi(a + 8);
         else if (!strncmp(a, "--pqd=", 6)) P.pqd = atof(a + 6);
         else if (!strncmp(a, "--seglen=", 9)) { P.seglen = atoi(a + 9); seglenSet = 1; }
         else if (!strncmp(a, "--a2amax=", 9)) P.a2amax = atoi(a + 9);

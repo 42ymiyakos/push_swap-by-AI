@@ -10,6 +10,7 @@ typedef struct {
     int lbA, lbB;
     ll src, dst;
     int srcIdx, dstRaw, t, c;
+    int pr, prr;  /* pending A2A rotations before this query */
 } QInfo;
 
 typedef struct {
@@ -24,6 +25,8 @@ typedef struct {
     ll finAnc;
     int nb, nt, W;  /* W = Q+1 row stride, Wt = Q+2 */
     int tmode, t0, topb, ubInit;
+    int *tb; int tbcap;
+    int allowA2A, a2aMax;
 } RI;
 
 static inline int md(int x, int m) { return m > 0 ? ((x % m) + m) % m : 0; }
@@ -46,6 +49,7 @@ static void pass(RI *R, const Rep *r, ll EkI, const ll *Eb, int nb, const ll *Et
     for (int k = 1; k < nb; k++) if (Eb[k - 1] > Eb[k]) ebSorted = 0;
     initial_state(r, s);
     ll ancA = s->na ? s->A[s->ta] : 0, ancB = 0;
+    int ancT = 0;  /* 0: top = first element >= ancA; 1: top = last element < ancA */
     for (int i = 0; i <= Q; i++) {
         int sa = s->na, sb = s->nb;
         R->rkI[i] = lb_ll(s->A, sa, EkI);
@@ -56,16 +60,27 @@ static void pass(RI *R, const Rep *r, ll EkI, const ll *Eb, int nb, const ll *Et
         for (int k = 0; k < nt; k++) R->rt[k * W + i] = lb_ll(s->A, sa, Et[k]);
         if (i == Q) {
             R->finSa = sa; R->finTa = s->ta; R->finAnc = ancA;
-            R->finLb = lb_ll(s->A, sa, ancA);
+            R->finLb = lb_ll(s->A, sa, ancA) - ancT;
             R->finOld = final_rot(s, r, NULL);
             R->minIdx = r->minv < r->n ? lb_ll(s->A, sa, r->tk[r->minv] * 1024 + r->minv) : 0;
             break;
         }
         QInfo *f = &R->qi[i];
-        f->sa = sa; f->sb = sb; f->ancA = ancA; f->ancB = ancB;
-        f->lbA = lb_ll(s->A, sa, ancA);
+        f->sa = sa; f->sb = sb; f->ancA = ancA; f->ancB = ancB; f->pr = s->pr; f->prr = s->prr;
+        f->lbA = lb_ll(s->A, sa, ancA) - ancT;
         f->lbB = lb_ll(s->B, sb, ancB);
         Query qu = r->q[i]; int u = qu.v; f->t = qu.t;
+        if (qu.t == 2) {
+            f->src = r->ik[u] * 1024 + u; f->dst = r->tk[u] * 1024 + u;
+            f->srcIdx = lb_ll(s->A, sa, f->src); f->dstRaw = lb_ll(s->A, sa, f->dst);
+            int wasTop = s->na && s->A[s->ta] == f->src;
+            A2AInfo in;
+            f->c = do_step_a2a(s, r, qu, &in);
+            if (in.topWo == -2 || f->sa <= 1) { if (wasTop) { ancA = f->dst; ancT = 0; } }
+            else if (in.fwd) { ancA = f->dst; ancT = 1; }
+            else { ancA = f->dst; ancT = 0; }
+            continue;
+        }
         if (qu.t == 0) {
             f->src = r->ik[u] * 1024 + u; f->dst = r->bk[u] * 1024 + u;
             f->srcIdx = lb_ll(s->A, sa, f->src); f->dstRaw = lb_ll(s->B, sb, f->dst);
@@ -75,6 +90,7 @@ static void pass(RI *R, const Rep *r, ll EkI, const ll *Eb, int nb, const ll *Et
         }
         f->c = do_step(s, r, qu, NULL);
         if (qu.t == 0) { ancA = f->src; ancB = f->dst; } else { ancA = f->dst; ancB = f->src; }
+        ancT = 0;
     }
 }
 
@@ -83,6 +99,7 @@ static inline int aug(const RI *R, int i, ll xa, ll xb, int topAo, int topBo) {
     const QInfo *f = &R->qi[i];
     int sa = f->sa + (xa >= 0), sb = f->sb + (xb >= 0);
     int ta = topAo >= 0 ? topAo : md(f->lbA + (xa >= 0 && xa < f->ancA), sa);
+    if (f->t == 2) return a2a_cost(sa, ta, f->srcIdx + (xa >= 0 && xa < f->src), f->dstRaw + (xa >= 0 && xa < f->dst)).cost;
     int tb = topBo >= 0 ? topBo : md(f->lbB + (xb >= 0 && xb < f->ancB), sb);
     int fa, fb;
     if (f->t == 0) {
@@ -96,7 +113,7 @@ static inline int aug(const RI *R, int i, ll xa, ll xb, int topAo, int topBo) {
         int sl = sa ? md(f->dstRaw + (xa >= 0 && xa < f->dst), sa) : 0;
         fa = sa ? md(sl - ta, sa) : 0;
     }
-    return 1 + comb_cost(fa, sa, fb, sb, NULL);
+    return 1 + comb_sync(fa, sa, fb, sb, f->pr, f->prr, NULL, NULL);
 }
 static inline int augA(const RI *R, int i, ll xa, int ta) {
     const QInfo *f = &R->qi[i];
@@ -135,7 +152,7 @@ static void prep_b(RI *R, int bi, ll EkI, ll eb, int vbf) {
         else ta1 = i < Q ? md(R->qi[i].lbA + (EkI < R->qi[i].ancA), sa1) : md(R->finLb + (EkI < R->finAnc), sa1);
         int fa = md(R->rkI[i] - ta1, sa1);
         int fb = (i < Q && sb) ? md(md(Rr[i], sb) - md(R->qi[i].lbB, sb), sb) : 0;
-        int c1 = 1 + comb_cost(fa, sa1, fb, sb, NULL);
+        int c1 = 1 + comb_sync(fa, sa1, fb, sb, i < Q ? R->qi[i].pr : 0, i < Q ? R->qi[i].prr : 0, NULL, NULL);
         R->bC1ii[i] = c1;
         if (i < Q) {
             const QInfo *f = &R->qi[i];
@@ -159,19 +176,19 @@ static void dp_bt(const RI *R, int bi, int ti, Best *bst) {
         int tail, c2;
         if (j < Q) {
             const QInfo *f = &R->qi[j];
-            c2 = 1 + comb_cost(F2[j], f->sa, R->bFbC2[j], f->sb + 1, NULL);
-            int s2 = 1 + comb_cost(FS[j], f->sa + 1, R->bFbS2[j], f->sb, NULL);
+            c2 = 1 + comb_sync(F2[j], f->sa, R->bFbC2[j], f->sb + 1, f->pr, f->prr, NULL, NULL);
+            int s2 = f->t == 2 ? FS[j] : 1 + comb_cost(FS[j], f->sa + 1, R->bFbS2[j], f->sb, NULL);
             tail = s2 - f->c + SU[j + 1] + finA;
         } else {
             c2 = 1 + comb_cost(F2[Q], R->finSa, 0, 1, NULL);
             tail = finB;
         }
         int Bj = R->G[j] + c2 + tail;
-        if (pmi >= 0 && pm + Bj < bst->delta) { bst->delta = pm + Bj; bst->i = pmi; bst->j = j; bst->bi = bi; bst->ti = ti; bst->keep = 0; }
+        if (pmi >= 0 && pm + Bj < bst->delta) { bst->delta = pm + Bj; bst->i = pmi; bst->j = j; bst->bi = bi; bst->ti = ti; bst->keep = 0; bst->a2a = 0; }
         int sa = j < Q ? R->qi[j].sa : R->finSa, sb = j < Q ? R->qi[j].sb : 0;
         int cc = 1 + comb_cost(FC[j], sa, 0, sb + 1, NULL);
         int d = R->P[j] + R->bC1ii[j] + cc + tail;
-        if (d < bst->delta) { bst->delta = d; bst->i = j; bst->j = j; bst->bi = bi; bst->ti = ti; bst->keep = 0; }
+        if (d < bst->delta) { bst->delta = d; bst->i = j; bst->j = j; bst->bi = bi; bst->ti = ti; bst->keep = 0; bst->a2a = 0; }
     }
 }
 
@@ -186,7 +203,7 @@ static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et
     ll EkI = r->ik[v] * 1024 + v;
     pass(R, r, EkI, Eb, nb, Et, nt, s);
     int Q = R->Q, W = R->W, Wt = Q + 2;
-    Best best = {INT_MAX, -1, -1, -1, -1, 0};
+    Best best = {INT_MAX, -1, -1, -1, -1, 0, 0};
     R->P[0] = 0;
     for (int i = 0; i < Q; i++) {
         int topo = (i == 0 && vbf) ? R->rkI[0] : -1;
@@ -217,9 +234,31 @@ static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et
             int sa = j < Q ? R->qi[j].sa : R->finSa;
             int ta = j < Q ? md(R->qi[j].lbA, sa) : md(R->finLb, R->finSa);
             F2[j] = sa ? md(md(T[j], sa) - ta, sa) : 0;
-            FS[j] = j < Q ? augA(R, j, et, T[j]) : 0;
+            FS[j] = j < Q ? (R->qi[j].t == 2 ? aug(R, j, et, -1, T[j], -1) : augA(R, j, et, T[j])) : 0;
             int tA = sa ? md(R->rkI[j], sa) : 0;
             FC[j] = sa ? md(md(T[j], sa) - tA, sa) : 0;
+        }
+    }
+    if (R->allowA2A) {
+        for (int ti = 0; ti < nt; ti++) {
+            ll et = Et[ti];
+            const int *T = R->rt + ti * W, *SU = R->tSUF + ti * Wt;
+            for (int i = 0; i <= Q; i++) {
+                int sa = i < Q ? R->qi[i].sa : R->finSa, sa1 = sa + 1;
+                if (sa < 1) continue;
+                int ta1 = (i == 0 && vbf) ? R->rkI[0] : (i < Q ? md(R->qi[i].lbA + (EkI < R->qi[i].ancA), sa1) : md(R->finLb + (EkI < R->finAnc), sa1));
+                int src = R->rkI[i], dr = T[i] + (EkI < et);
+                A2AInfo in = a2a_cost(sa1, ta1, src, dr);
+                if (in.topWo == -2) continue;
+                if (in.steps > R->a2aMax) continue;
+                int nt2 = in.fwd ? in.topWo + (T[i] <= in.topWo) : T[i];
+                int d;
+                if (i < Q) {
+                    int s3 = aug(R, i, et, -1, nt2, -1);
+                    d = R->P[i] + in.cost + s3 - R->qi[i].c + SU[i + 1] + R->tFinA[ti];
+                } else d = R->P[Q] + in.cost + fin(R, r, v, et, T[Q], nt2);
+                if (d < best.delta) { best.delta = d; best.i = i; best.j = i; best.bi = -1; best.ti = ti; best.keep = 0; best.a2a = 1; }
+            }
         }
     }
     if (R->tmode == 0 || nt == 1) {
@@ -229,7 +268,7 @@ static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et
         Pair *cand = xmalloc(sizeof(Pair) * (nb + 1));
         for (int bi = 0; bi < nb; bi++) {
             prep_b(R, bi, EkI, Eb[bi], vbf);
-            Best bb = {INT_MAX, -1, -1, -1, -1, 0};
+            Best bb = {INT_MAX, -1, -1, -1, -1, 0, 0};
             dp_bt(R, bi, tp, &bb);
             cand[bi].d = bb.delta; cand[bi].k = bi;
             if (bb.delta < best.delta) best = bb;
@@ -292,31 +331,42 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
             int tb_ = sb ? md(f->lbB + a, sb1) : 0, fb;
             if (f->t == 0) { int sl = md(f->dstRaw + b2, sb1); fb = md(sl - tb_, sb1); }
             else { int si = f->srcIdx + b2; fb = md(si - tb_, sb1); }
-            ev[a][b2] = 1 + comb_cost(faOld, sa, fb, sb1, NULL) - f->c;
+            ev[a][b2] = f->t == 2 ? 0 : 1 + comb_sync(faOld, sa, fb, sb1, f->pr, f->prr, NULL, NULL) - f->c;
         }
+        int isAA = f->t == 2;
+        int s1AA = isAA ? a2a_cost(sa, tA, f->srcIdx, f->dstRaw).cost : 0;
+        int sync = f->pr | f->prr;
         int base = SU[x + 1] + finA - f->c;
-        int lbS2 = 1 + imin(FS[x], sa + 1 - FS[x]);
-        int lbC2 = 1 + (sa ? imin(F2[x], sa - F2[x]) : 0);
+        int lbS2 = isAA ? FS[x] : 1 + imin(FS[x], sa + 1 - FS[x]);
+        int lbC2 = 1 + (sa ? imin(F2[x], sa - F2[x]) : 0) - (f->pr + f->prr);
         if (lbC2 < 1) lbC2 = 1;
         int lbTail = lbS2 + base;
+        /* c1 (needed for every slot) depends only on the slot's rank R in B: tabulate it (O(sb) <= O(m)) */
+        int nR = sb + 1;
+        if (R->tbcap < nR + 1) { R->tbcap = 2 * (nR + 1); R->tb = xrealloc(R->tb, sizeof(int) * R->tbcap); }
+        int *Tc1 = R->tb;
+        for (int Rv = 0; Rv < nR; Rv++) {
+            int Rm = sb ? (Rv < sb ? Rv : Rv - sb) : 0;
+            int fb1 = sb ? mq(Rm - tbOld, sb) : 0;
+            Tc1[Rv] = 1 + (sync ? comb_sync(fa1, sa1, fb1, sb, f->pr, f->prr, NULL, NULL) : comb_cost(fa1, sa1, fb1, sb, NULL));
+        }
         for (int s = 0; s < m; s++) {
             int Rv = swR[s];
             int ltA = s < pA, ltU = s < pU;
             int Rm = sb ? (Rv < sb ? Rv : Rv - sb) : 0;
-            int fb1 = sb ? mq(Rm - tbOld, sb) : 0;
-            int c1 = 1 + comb_cost(fa1, sa1, fb1, sb, NULL);
+            int c1 = Tc1[Rv];
             int lbJ = imin(swPmi[s] >= 0 ? swPm[s] + swG[s] + lbC2 : INT_MAX / 2, R->P[x] + c1 + cc) + lbTail;
             if (lbJ < bestSoFar) {
                 int tb1 = sb ? mq(f->lbB + ltA, sb1) : 0;
                 int fbS2 = 0;
                 if (sb) fbS2 = f->t == 0 ? mq(mq(f->dstRaw, sb) - Rm, sb) : mq(f->srcIdx - Rm, sb);
-                int s2 = 1 + comb_cost(FS[x], sa + 1, fbS2, sb, NULL);
+                int s2 = isAA ? FS[x] : 1 + comb_cost(FS[x], sa + 1, fbS2, sb, NULL);
                 int tail = s2 + base;
                 int d = R->P[x] + c1 + cc + tail;
                 if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = x; slotJ[s] = x; }
                 if (swPmi[s] >= 0) {
                     int fbC2 = mq(Rv - tb1, sb1);
-                    int c2 = 1 + comb_cost(F2[x], sa, fbC2, sb1, NULL);
+                    int c2 = 1 + (sync ? comb_sync(F2[x], sa, fbC2, sb1, f->pr, f->prr, NULL, NULL) : comb_cost(F2[x], sa, fbC2, sb1, NULL));
                     int dd = swPm[s] + swG[s] + c2 + tail;
                     if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
                 }
@@ -325,17 +375,21 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
             int e = ev[ltA][ltU];
             int pre = R->P[x] + c1 - f->c - (swG[s] + e);
             if (pre + 1 < swPm[s]) {
-                int fbs1;
-                if (f->t == 0) { int sl = mq(f->dstRaw + ltU, sb1); fbs1 = mq(sl - Rv, sb1); }
-                else { int si = f->srcIdx + ltU; fbs1 = mq(si - Rv, sb1); }
-                int s1 = 1 + comb_cost(faS1, sa, fbs1, sb1, NULL);
+                int s1;
+                if (isAA) s1 = s1AA;
+                else {
+                    int fbs1;
+                    if (f->t == 0) { int sl = mq(f->dstRaw + ltU, sb1); fbs1 = mq(sl - Rv, sb1); }
+                    else { int si = f->srcIdx + ltU; fbs1 = mq(si - Rv, sb1); }
+                    s1 = 1 + comb_cost(faS1, sa, fbs1, sb1, NULL);
+                }
                 int Ax = pre + s1;
                 if (Ax < swPm[s]) { swPm[s] = Ax; swPmi[s] = x; }
             }
             swG[s] += e;
         }
         if (f->t == 0) { for (int s = pU; s < m; s++) swR[s]++; }
-        else { for (int s = pU; s < m; s++) swR[s]--; }
+        else if (f->t == 1) { for (int s = pU; s < m; s++) swR[s]--; }
     }
 }
 
@@ -372,7 +426,7 @@ static int cmp_llv(const void *x, const void *y) { ll a = *(const ll *)x, b = *(
 
 static int build_bl(IG *g, const Rep *r) {
     int m = 0;
-    for (int u = 0; u < r->n; u++) if (r->present[u] && !r->inK[u]) g->bl[m++] = u;
+    for (int u = 0; u < r->n; u++) if (r->present[u] && !r->inK[u] && !r->isA2A[u]) g->bl[m++] = u;
     g_r = r; qsort(g->bl, m, sizeof(int), cmp_bl);
     return m;
 }
@@ -491,8 +545,12 @@ static int reinsert(IG *g, Rep *r, int v) {
             free(sc); free(sel);
         } else b = solve(R, r, v, g->Eb, nEb, g->Et, nEt, keepOK, vbf, &g->st);
         r->present[v] = 1;
+        r->isA2A[v] = 0;
         if (b.keep) { r->inK[v] = 1; r->tk[v] = r->ik[v]; }
-        else {
+        else if (b.a2a) {
+            r->inK[v] = 0; r->isA2A[v] = 1; r->tk[v] = g->Et[b.ti] >> 10;
+            rep_insert_q(r, b.i, v, 2);
+        } else {
             r->inK[v] = 0;
             r->bk[v] = EbUsed[b.bi] >> 10; r->tk[v] = g->Et[b.ti] >> 10;
             rep_insert_q(r, b.i, v, 0);
@@ -541,6 +599,7 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     IG g; memset(&g, 0, sizeof g);
     g.P = P; g.rng = rng; g.n = n;
     g.R.tmode = 1; g.R.t0 = P->t0; g.R.topb = P->topb; g.R.ubInit = INT_MAX;
+    g.R.allowA2A = P->a2a; g.R.a2aMax = P->a2amax;
     st_alloc(&g.st, n);
     g.bl = xmalloc(sizeof(int) * n); g.pos = xmalloc(sizeof(int) * n); g.vcost = xmalloc(sizeof(int) * n);
     g.D = xmalloc(sizeof(int) * n); g.dc = xmalloc(sizeof(int) * n); g.ord = xmalloc(sizeof(int) * n); g.mark = xmalloc(n);
@@ -566,7 +625,7 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
         int qd = rng_uni(rng) < P->pqd;
         for (int k = 0; k < nD; k++) {
             int v = g.D[k];
-            if (qd) { rep_remove_queries(&w, v); w.inK[v] = 1; w.tk[v] = w.ik[v]; w.ph[v] = 1; }
+            if (qd) { rep_remove_queries(&w, v); w.inK[v] = 1; w.isA2A[v] = 0; w.tk[v] = w.ik[v]; w.ph[v] = 1; }
             else remove_value(&w, v);
         }
         int c = full_cost(&w);
@@ -574,6 +633,7 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
             int v = g.D[g.ord[z]];
             if (qd) { w.ph[v] = 0; remove_value(&w, v); c = full_cost(&w); }
             c += reinsert(&g, &w, v);
+            if (P->a2a) c = full_cost(&w);  /* DP is approximate around A2A queries: use the exact cost */
         }
         int h = hist[it % hl];
         if (c <= curCost || c <= h) {
@@ -590,5 +650,5 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     RI *R = &g.R;
     free(R->qi); free(R->rkI); free(R->P); free(R->G); free(R->Aarr); free(R->bFbC2); free(R->bFbS2); free(R->bC1ii);
     free(R->rb); free(R->rt); free(R->tSUF); free(R->tF2); free(R->tFS); free(R->tFC); free(R->tFinA); free(R->tFinB);
-    free(R->swR); free(R->swG); free(R->swPm); free(R->swPmi); free(R->slotBest); free(R->slotI); free(R->slotJ);
+    free(R->tb); free(R->swR); free(R->swG); free(R->swPm); free(R->swPmi); free(R->slotBest); free(R->slotI); free(R->slotJ);
 }

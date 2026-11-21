@@ -5,12 +5,12 @@
 void rep_alloc(Rep *r, int n) {
     r->n = n;
     r->a0 = xcalloc(n, sizeof(int));
-    r->inK = xcalloc(n, 1); r->ph = xcalloc(n, 1); r->present = xcalloc(n, 1);
+    r->inK = xcalloc(n, 1); r->ph = xcalloc(n, 1); r->present = xcalloc(n, 1); r->isA2A = xcalloc(n, 1);
     r->ik = xcalloc(n, sizeof(ll)); r->tk = xcalloc(n, sizeof(ll)); r->bk = xcalloc(n, sizeof(ll));
     r->qcap = 2 * n + 8; r->q = xcalloc(r->qcap, sizeof(Query)); r->nq = 0; r->minv = 0;
 }
 void rep_free(Rep *r) {
-    free(r->a0); free(r->inK); free(r->ph); free(r->present);
+    free(r->a0); free(r->inK); free(r->ph); free(r->present); free(r->isA2A);
     free(r->ik); free(r->tk); free(r->bk); free(r->q);
     memset(r, 0, sizeof(*r));
 }
@@ -18,7 +18,7 @@ void rep_copy(Rep *d, const Rep *s) {
     if (d->n != s->n || !d->a0) { if (d->a0) rep_free(d); rep_alloc(d, s->n); }
     int n = s->n;
     memcpy(d->a0, s->a0, sizeof(int) * n);
-    memcpy(d->inK, s->inK, n); memcpy(d->ph, s->ph, n); memcpy(d->present, s->present, n);
+    memcpy(d->inK, s->inK, n); memcpy(d->ph, s->ph, n); memcpy(d->present, s->present, n); memcpy(d->isA2A, s->isA2A, n);
     memcpy(d->ik, s->ik, sizeof(ll) * n); memcpy(d->tk, s->tk, sizeof(ll) * n); memcpy(d->bk, s->bk, sizeof(ll) * n);
     memcpy(d->q, s->q, sizeof(Query) * s->nq); d->nq = s->nq; d->minv = s->minv;
 }
@@ -33,11 +33,11 @@ void rep_remove_queries(Rep *r, int v) {
     r->nq = k;
 }
 
-void st_alloc(St *s, int n) { s->A = xmalloc(sizeof(ll) * (n + 1)); s->B = xmalloc(sizeof(ll) * (n + 1)); s->na = s->nb = s->ta = s->tb = 0; }
+void st_alloc(St *s, int n) { s->A = xmalloc(sizeof(ll) * (n + 1)); s->B = xmalloc(sizeof(ll) * (n + 1)); s->na = s->nb = s->ta = s->tb = s->pr = s->prr = 0; }
 void st_free(St *s) { free(s->A); free(s->B); }
 void st_copy(St *d, const St *s) {
     memcpy(d->A, s->A, sizeof(ll) * s->na); memcpy(d->B, s->B, sizeof(ll) * s->nb);
-    d->na = s->na; d->nb = s->nb; d->ta = s->ta; d->tb = s->tb;
+    d->na = s->na; d->nb = s->nb; d->ta = s->ta; d->tb = s->tb; d->pr = s->pr; d->prr = s->prr;
 }
 
 static int cmp_ll(const void *a, const void *b) { ll x = *(const ll *)a, y = *(const ll *)b; return x < y ? -1 : x > y; }
@@ -50,10 +50,54 @@ void initial_state(const Rep *r, St *s) {
     for (int i = 0; i < r->n; i++) if (r->present[r->a0[i]]) { first = r->a0[i]; break; }
     s->ta = 0;
     if (first >= 0) s->ta = lb_ll(s->A, s->na, r->ik[first] * 1024 + first);
-    s->nb = 0; s->tb = 0;
+    s->nb = 0; s->tb = 0; s->pr = s->prr = 0;
+}
+
+/* A2A: element u at index src of A (size sa, top ta) moves to the gap given by dstRaw (lower_bound of its
+ * target key, u included). forward d: rotate u to top, sa,(ra,sa)^(d-1); backward d: rotate pred(u) to top,
+ * sa,(rra,sa)^(d-1). */
+A2AInfo a2a_cost(int sa, int ta, int src, int dstRaw) {
+    A2AInfo r = {0, 1, 0, 0, 1, -1};
+    int m = sa - 1;
+    if (m <= 0) return r;
+    int rt = dstRaw - (dstRaw > src ? 1 : 0);
+    int df = ((rt - src) % m + m) % m, db = (m - df) % m;
+    if (df == 0) { r.topWo = -2; return r; }
+    int f1 = ((src - ta) % sa + sa) % sa, r1 = imin(f1, sa - f1);
+    int pi = (src - 1 + sa) % sa;
+    int f2 = ((pi - ta) % sa + sa) % sa, r2 = imin(f2, sa - f2);
+    int cf = r1 + 2 * df - 1, cb = r2 + 2 * db - 1;
+    if (cf <= cb) { A2AInfo x = {cf, 1, df, r1, f1 <= sa - f1, (src + df - 1) % m}; r = x; }
+    else { A2AInfo x = {cb, 0, db, r2, f2 <= sa - f2, -1}; r = x; }
+    return r;
+}
+
+int do_step_a2a(St *s, const Rep *r, Query qu, A2AInfo *info) {
+    int v = qu.v;
+    ll *A = s->A;
+    ll es = r->ik[v] * 1024 + v, ed = r->tk[v] * 1024 + v;
+    int sa = s->na;
+    int src = lb_ll(A, sa, es), dr = lb_ll(A, sa, ed);
+    A2AInfo in = a2a_cost(sa, s->ta, src, dr);
+    if (info) *info = in;
+    if (in.topWo != -2 && sa > 1) {
+        if (in.rotfwd) s->pr += in.rot; else s->prr += in.rot;
+        if (in.fwd) s->pr += in.steps - 1; else s->prr += in.steps - 1;
+    }
+    ll topKey = sa ? A[s->ta] : 0;
+    memmove(A + src, A + src + 1, sizeof(ll) * (sa - src - 1)); s->na--;
+    int j = lb_ll(A, s->na, ed);
+    ll newTop;
+    if (in.topWo == -2 || (in.topWo == -1 && sa <= 1)) newTop = topKey == es ? ed : topKey;
+    else if (in.fwd) newTop = A[in.topWo];
+    else newTop = ed;
+    memmove(A + j + 1, A + j, sizeof(ll) * (s->na - j)); A[j] = ed; s->na++;
+    s->ta = lb_ll(A, s->na, newTop);
+    return in.cost;
 }
 
 int do_step(St *s, const Rep *r, Query qu, StepInfo *info) {
+    if (qu.t == 2) { if (info) { info->fa = info->sa = info->fb = info->sb = 0; info->mode = -1; info->k = 0; } return do_step_a2a(s, r, qu, NULL); }
     int v = qu.v;
     ll *S = qu.t == 0 ? s->A : s->B, *D = qu.t == 0 ? s->B : s->A;
     int *ns = qu.t == 0 ? &s->na : &s->nb, *nd = qu.t == 0 ? &s->nb : &s->na;
@@ -67,9 +111,10 @@ int do_step(St *s, const Rep *r, Query qu, StepInfo *info) {
     int fd = 0;
     if (sd > 0) { int jj = j == sd ? 0 : j; fd = ((jj - *td) % sd + sd) % sd; }
     int fa = qu.t == 0 ? fs : fd, sa = qu.t == 0 ? ss : sd, fb = qu.t == 0 ? fd : fs, sb = qu.t == 0 ? sd : ss;
-    int mode;
-    int c = comb_cost(fa, sa, fb, sb, &mode) + 1;
-    if (info) { info->fa = fa; info->sa = sa; info->fb = fb; info->sb = sb; info->mode = mode; }
+    int mode, kk;
+    int c = comb_sync(fa, sa, fb, sb, s->pr, s->prr, &mode, &kk) + 1;
+    if (info) { info->fa = fa; info->sa = sa; info->fb = fb; info->sb = sb; info->mode = mode; info->k = kk; }
+    s->pr = s->prr = 0;
     memmove(S + i, S + i + 1, sizeof(ll) * (ss - i - 1)); (*ns)--;
     *ts = *ns == 0 ? 0 : (i == *ns ? 0 : i);
     memmove(D + j + 1, D + j, sizeof(ll) * (sd - j)); D[j] = ed; (*nd)++;
@@ -102,17 +147,33 @@ void emit(const Rep *r, OpVec *ops) {
     St s; st_alloc(&s, r->n);
     initial_state(r, &s);
     ops->n = 0;
+    int runStart = 0;  /* start of the current A2A run in ops */
     for (int k = 0; k < r->nq; k++) {
+        if (r->q[k].t == 2) {
+            A2AInfo a; int sa = s.na;
+            do_step_a2a(&s, r, r->q[k], &a);
+            if (a.topWo == -2 || sa <= 1) continue;
+            put(ops, a.rotfwd ? RA : RRA, a.rot);
+            ov_push(ops, SA);
+            for (int z = 1; z < a.steps; z++) { ov_push(ops, a.fwd ? RA : RRA); ov_push(ops, SA); }
+            continue;
+        }
         StepInfo in;
         do_step(&s, r, r->q[k], &in);
+        if (in.k > 0) {  /* pair pending A rotations of the run with B rotations of this push */
+            int want = (in.mode == 0 || in.mode == 3) ? RA : RRA, merged = want == RA ? RR : RRR, kk = in.k;
+            for (int x = runStart; x < ops->n && kk > 0; x++) if (ops->d[x] == want) { ops->d[x] = (uint8_t)merged; kk--; }
+        }
+        int kB = in.k;
         int ra = in.fa, rra = in.fa ? in.sa - in.fa : 0, rb = in.fb, rrb = in.fb ? in.sb - in.fb : 0;
         switch (in.mode) {
-        case 0: put(ops, RR, imin(ra, rb)); put(ops, RA, ra - imin(ra, rb)); put(ops, RB, rb - imin(ra, rb)); break;
-        case 1: put(ops, RRR, imin(rra, rrb)); put(ops, RRA, rra - imin(rra, rrb)); put(ops, RRB, rrb - imin(rra, rrb)); break;
-        case 2: put(ops, RA, ra); put(ops, RRB, rrb); break;
-        case 3: put(ops, RRA, rra); put(ops, RB, rb); break;
+        case 0: put(ops, RR, imin(ra, rb)); put(ops, RA, ra - imin(ra, rb)); put(ops, RB, rb - imin(ra, rb) - kB); break;
+        case 1: put(ops, RRR, imin(rra, rrb)); put(ops, RRA, rra - imin(rra, rrb)); put(ops, RRB, rrb - imin(rra, rrb) - kB); break;
+        case 2: put(ops, RA, ra); put(ops, RRB, rrb - kB); break;
+        case 3: put(ops, RRA, rra); put(ops, RB, rb - kB); break;
         }
         ov_push(ops, r->q[k].t == 0 ? PB : PA);
+        runStart = ops->n;
     }
     int dir, c = final_rot(&s, r, &dir);
     put(ops, dir == 0 ? RA : RRA, c);

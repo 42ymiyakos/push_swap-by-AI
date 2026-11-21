@@ -64,16 +64,32 @@ static inline int comb_cost(int fa, int sa, int fb, int sb, int *mode) {
     return best;
 }
 
+/* push cost with pending A rotations (pr = ra, prr = rra) of a preceding A2A run that can be paired
+ * with this push's B rotations (rr / rrr). */
+static inline int comb_sync(int fa, int sa, int fb, int sb, int pr, int prr, int *mode, int *kk) {
+    int ra = fa, rra = fa ? sa - fa : 0, rb = fb, rrb = fb ? sb - fb : 0;
+    int k0 = imin(pr, imax(0, rb - ra)), k1 = imin(prr, imax(0, rrb - rra));
+    int k2 = imin(prr, rrb), k3 = imin(pr, rb);
+    int c0 = imax(ra, rb) - k0, c1 = imax(rra, rrb) - k1, c2 = ra + rrb - k2, c3 = rra + rb - k3;
+    int best = c0, m = 0, k = k0;
+    if (c1 < best) { best = c1; m = 1; k = k1; }
+    if (c2 < best) { best = c2; m = 2; k = k2; }
+    if (c3 < best) { best = c3; m = 3; k = k3; }
+    if (mode) *mode = m;
+    if (kk) *kk = k;
+    return best;
+}
+
 /* ---------- representation ---------- */
 #define KEY_BASE (1LL << 40)
 #define KEY_GAP (1LL << 22)
 
-typedef struct { int16_t v; uint8_t t; } Query; /* t: 0 = A2B, 1 = B2A */
+typedef struct { int16_t v; uint8_t t; } Query; /* t: 0 = A2B, 1 = B2A, 2 = A2A (move inside A with sa) */
 
 typedef struct {
     int n;
     int *a0;
-    char *inK, *ph, *present;
+    char *inK, *ph, *present, *isA2A;
     ll *ik, *tk, *bk;
     Query *q;
     int nq, qcap;
@@ -87,12 +103,15 @@ void rep_fix_minv(Rep *r);
 void rep_insert_q(Rep *r, int pos, int v, int t);
 void rep_remove_queries(Rep *r, int v);
 
-typedef struct { ll *A, *B; int na, nb, ta, tb; } St;
+typedef struct { ll *A, *B; int na, nb, ta, tb, pr, prr; } St;
 void st_alloc(St *s, int n);
 void st_free(St *s);
 void st_copy(St *dst, const St *src);
 void initial_state(const Rep *r, St *s);
-typedef struct { int fa, sa, fb, sb, mode; } StepInfo;
+typedef struct { int fa, sa, fb, sb, mode, k; } StepInfo;
+typedef struct { int cost, fwd, steps, rot, rotfwd, topWo; } A2AInfo;
+A2AInfo a2a_cost(int sa, int ta, int src, int dstRaw);
+int do_step_a2a(St *s, const Rep *r, Query qu, A2AInfo *info);
 int do_step(St *s, const Rep *r, Query qu, StepInfo *info);
 int final_rot(const St *s, const Rep *r, int *dir);
 int full_cost(const Rep *r);
@@ -118,9 +137,10 @@ typedef struct {
     uint64_t seed;
     int t0, topb, seglen, rmax, vwin, lahc, verbose;
     double pqd;
+    int a2a, a2amax;
 } Params;
 
-typedef struct { int delta, i, j, bi, ti, keep; } Best;
+typedef struct { int delta, i, j, bi, ti, keep, a2a; } Best;
 
 void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost, long long *itersOut);
 

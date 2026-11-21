@@ -340,7 +340,7 @@ static bool apply_opt(Params &P, const std::string &a) {
 int main(int argc, char **argv) {
     Params P;
     // size-dependent defaults (overridable): tuned on train/dev sets, see EXPERIMENTS.md
-    P.sweep = 1; P.pqd = 0.5; P.time = -1;
+    P.sweep = 1; P.pqd = 0.5; P.time = -1; P.a2a = 1; P.a2amax = 1;
     int first = 1;
     std::vector<std::string> optv;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {

@@ -394,7 +394,7 @@ int main(int argc, char **argv) {
         Rng rr(1); auto K = circular_lis(a0, rr);
         print_ops(chunk_construct(a0, K, std::max(2, n / 80), 0)); return 0;
     }
-    if (P.time < 0) P.time = n <= 150 ? 16.0 : (n <= 300 ? 25.0 : 45.0);
+    if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 45.0);
     if (n > 300) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 30; P.ktop = 3; P.bw = 500; P.bws = 0; P.chunkList = {4, 6, 8, 10, 12}; P.kper = 3; P.bwm = 20; }
     if (n <= 300) { P.chunkList = n <= 150 ? std::vector<int>{2, 3, 4} : std::vector<int>{3, 4, 5, 6}; P.kper = 3; P.bwm = 100; }
     P.peepK = n <= 150 ? std::vector<int>{4, 6, 8} : std::vector<int>{4, 6};

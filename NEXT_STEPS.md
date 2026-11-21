@@ -7,7 +7,7 @@
 - Held-out results (eval3 + eval4, 60 cases per size; reference CSVs `eval3_ref_*`, `eval4_ref_*` exist):
   - N=100: 356.5 median / 357.7 mean vs 363.5 / 363.9 → −6.18, p = 0.0003 (48 W / 2 T / 10 L).
   - N=500: 2849.5 / 2876.0 vs 2967.5 / 2967.5 → −91.5, p < 0.0001 (49 W / 11 L).
-- Defaults: 15 s (n ≤ 150), 25 s (n ≤ 300), 40 s otherwise; irot 16; ubw 1; final beam 1000 / 500; kick 200 (×2); A2A on.
+- Defaults: 15 s (n ≤ 150), 25 s (n ≤ 300), 45 s otherwise; irot 16; ubw 1; final beam 1000 / 500; kick 200 (×2); A2A on.
 - Machine: 4 vCPU only. At most 4 solver processes; nothing heavy while a time-limited benchmark runs.
 - Dev sets: `dev40_u100` (`--limit 40`), `dev40_u500` (`--offset 12 --limit 28`), `dev60_u500` (60 cases) for N=500 decisions.
   N=500 time-limited means vary about ±5 run to run over 28 cases; N=100 results are nearly deterministic.

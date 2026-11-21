@@ -1,4 +1,13 @@
-# BEST RESULTS (updated 2026-11-21, v13)
+# BEST RESULTS (updated 2026-11-21, v14)
+
+## v14 = v13 algorithm, default time 15 s (n ≤ 150) / 45 s (n > 300) — held-out eval3 + eval4, 60 cases
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 500 | **PSIG v14 (C, 45 s)** | **2841.5** | **2870.4** | 75.3 | 3060 | 44.4 |
+| 500 | reference | 2967.5 | 2967.5 | 34.3 | 3041 | 47.7 |
+N=500 paired: mean **−97.2**, 95% CI [−115.4, −77.9], 49 W / 11 L, p < 0.0001 (still faster than the reference).
+N=100: 16 s gave the same as 15 s (−6.02 vs −6.18) → 15 s kept; N=100 numbers below (v13) apply.
+
 
 ## v13 (C) vs reference — held-out eval3 + eval4, 60 cases per size, identical inputs
 | N | Solver | Median | Mean | Std | Max | s/case |

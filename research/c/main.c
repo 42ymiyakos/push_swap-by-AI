@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
         chunk_construct(a0, n, K, m, 0, 2, &ops);
         print_ops(&ops); ov_free(&ops); free(K); free(a0); return 0;
     }
-    if (P.time < 0) P.time = n <= 150 ? 16.0 : (n <= 300 ? 25.0 : 45.0);
+    if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 45.0);
     int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2, kper = 3, bwm = 100;
     int mlist4[5] = {2, 3, 4, 0, 0}, nm = 3;
     if (n > 150 && n <= 300) { int t[4] = {3, 4, 5, 6}; memcpy(mlist4, t, sizeof t); nm = 4; }

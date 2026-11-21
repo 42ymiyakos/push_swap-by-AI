@@ -8,10 +8,10 @@ operations as possible, always correct.
 | N | This repository (C version) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
 |---:|---:|---:|---:|
 | 100 | **356.5** (about 15 s) | 363.5 (about 17 s) | 608 |
-| 500 | **2849.5** (about 40 s) | 2967.5 (about 48 s) | 5349 |
+| 500 | **2841.5** (about 44 s) | 2967.5 (about 48 s) | 5349 |
 
 - n ≤ 8 is solved optimally by exhaustive search (n=3: at most 2 ops, n=5: at most 8 ops).
-- Both sizes are significantly better than the reference: N=500 by 91.5 operations on average (p < 0.0001, 49 wins out of 60), N=100 by 6.2 operations (p = 0.0003, 48 wins, 2 ties, 10 losses).
+- Both sizes are significantly better than the reference: N=500 by 97.2 operations on average (p < 0.0001, 49 wins out of 60), N=100 by 6.2 operations (p = 0.0003, 48 wins, 2 ties, 10 losses).
 - Full figures, conditions and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
 
 ## Quick start (C version)
@@ -22,7 +22,7 @@ cd research/c && make
 ./push_swap --time=5 $(python3 ../tools/gen.py --n 100 --seed 1)
 ```
 
-Default time limit: 10 s for n ≤ 150, 20 s for n ≤ 300, 40 s above that. `--iters=N --seed=S` gives a
+Default time limit: 15 s for n ≤ 150, 25 s for n ≤ 300, 45 s above that. `--iters=N --seed=S` gives a
 deterministic run. Invalid input prints `Error`. This is not a norminette-compliant 42 submission.
 
 ## Algorithm summary

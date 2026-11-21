@@ -18,6 +18,7 @@ struct QInfo {
     int srcIdx, dstRaw;  // index of source element in its stack, raw lower_bound of dst in dest
     int t;               // 0 A2B 1 B2A
     int c;               // cost
+    int pr, prr;         // pending A2A rotations before this query
 };
 
 struct Reinserter {
@@ -44,6 +45,8 @@ struct Reinserter {
         St s = initial_state(r);
         // initial anchors: exact top element
         ll ancA = s.A.empty() ? 0 : s.A[s.ta], ancB = 0;
+        int ancT = 0;  // 0: top = first element >= ancA ; 1: top = last element < ancA
+        isA2Aq.assign(Q, 0);
         for (int i = 0; i <= Q; i++) {
             int sa = s.A.size(), sb = s.B.size();
             rkI[i] = (int)(std::lower_bound(s.A.begin(), s.A.end(), EkI) - s.A.begin());
@@ -55,16 +58,29 @@ struct Reinserter {
             for (size_t k = 0; k < Et.size(); k++) rt[k][i] = (int)(std::lower_bound(s.A.begin(), s.A.end(), Et[k]) - s.A.begin());
             if (i == Q) {
                 finSa = sa; finTa = s.ta; finAnc = ancA;
-                finLb = (int)(std::lower_bound(s.A.begin(), s.A.end(), ancA) - s.A.begin());
+                finLb = (int)(std::lower_bound(s.A.begin(), s.A.end(), ancA) - s.A.begin()) - ancT;
                 finOld = final_rot(s, r);
                 minIdx = r.minv < r.n ? (int)(std::lower_bound(s.A.begin(), s.A.end(), r.tk[r.minv] * 1024 + r.minv) - s.A.begin()) : 0;
                 break;
             }
             QInfo &f = qi[i];
-            f.sa = sa; f.sb = sb; f.ancA = ancA; f.ancB = ancB;
-            f.lbA = (int)(std::lower_bound(s.A.begin(), s.A.end(), ancA) - s.A.begin());
+            f.sa = sa; f.sb = sb; f.ancA = ancA; f.ancB = ancB; f.pr = s.pr; f.prr = s.prr;
+            f.lbA = (int)(std::lower_bound(s.A.begin(), s.A.end(), ancA) - s.A.begin()) - ancT;
             f.lbB = (int)(std::lower_bound(s.B.begin(), s.B.end(), ancB) - s.B.begin());
             Query qu = r.q[i]; int u = qu.v; f.t = qu.t;
+            if (qu.t == 2) {
+                isA2Aq[i] = 1;
+                f.src = r.ik[u] * 1024 + u; f.dst = r.tk[u] * 1024 + u;
+                f.srcIdx = (int)(std::lower_bound(s.A.begin(), s.A.end(), f.src) - s.A.begin());
+                f.dstRaw = (int)(std::lower_bound(s.A.begin(), s.A.end(), f.dst) - s.A.begin());
+                bool wasTop = !s.A.empty() && s.A[s.ta] == f.src;
+                A2AInfo in;
+                f.c = do_step_a2a(s, r, qu, &in);
+                if (in.topWo == -2 || f.sa <= 1) { if (wasTop) { ancA = f.dst; ancT = 0; } }
+                else if (in.fwd) { ancA = f.dst; ancT = 1; }
+                else { ancA = f.dst; ancT = 0; }
+                continue;
+            }
             if (qu.t == 0) {
                 f.src = r.ik[u] * 1024 + u; f.dst = r.bk[u] * 1024 + u;
                 f.srcIdx = (int)(std::lower_bound(s.A.begin(), s.A.end(), f.src) - s.A.begin());
@@ -78,6 +94,7 @@ struct Reinserter {
             // anchors for the next query
             if (qu.t == 0) { ancA = f.src; ancB = f.dst; }   // A: successor of popped; B: exact pushed
             else { ancA = f.dst; ancB = f.src; }
+            ancT = 0;
         }
     }
 
@@ -87,6 +104,7 @@ struct Reinserter {
         const QInfo &f = qi[i];
         int sa = f.sa + (xa >= 0), sb = f.sb + (xb >= 0);
         int ta = topAo >= 0 ? topAo : md(f.lbA + (xa >= 0 && xa < f.ancA), sa);
+        if (f.t == 2) return a2a_cost(sa, ta, f.srcIdx + (xa >= 0 && xa < f.src), f.dstRaw + (xa >= 0 && xa < f.dst)).cost;
         int tb = topBo >= 0 ? topBo : md(f.lbB + (xb >= 0 && xb < f.ancB), sb);
         (void)ra; (void)rbk;
         int fa, fb;
@@ -101,10 +119,13 @@ struct Reinserter {
             int sl = sa ? md(f.dstRaw + (xa >= 0 && xa < f.dst), sa) : 0;
             fa = sa ? md(sl - ta, sa) : 0;
         }
-        return 1 + comb_cost(fa, sa, fb, sb);
+        return 1 + comb_sync(fa, sa, fb, sb, f.pr, f.prr);
     }
 
-    struct Best { int delta; int i, j, bi, ti; bool keep; };
+    struct Best { int delta; int i, j, bi, ti; bool keep; bool a2a = false; };
+    bool allowA2A = false; int a2aMax = 3;
+    int ubInit = INT_MAX;
+    std::vector<char> isA2Aq;
 
     // r: current solution (v absent). Candidate encoded keys for B (Eb) and A targets (Et).
     int tmode = 1, t0 = 0, topb = 3;
@@ -152,9 +173,35 @@ struct Reinserter {
                 int sa = j < Q ? qi[j].sa : finSa;
                 int ta = j < Q ? md(qi[j].lbA, sa) : md(finLb, finSa);
                 F2[j] = sa ? md(md(T[j], sa) - ta, sa) : 0;
-                FS[j] = j < Q ? augA(j, et, T[j]) : 0;
+                FS[j] = j < Q ? (qi[j].t == 2 ? aug(j, et, T[j], -1, 0, T[j], -1) : augA(j, et, T[j])) : 0;
                 int tA = sa ? md(rkI[j], sa) : 0;
                 FC[j] = sa ? md(md(T[j], sa) - tA, sa) : 0;
+            }
+        }
+        if (allowA2A) {
+            for (int ti = 0; ti < nt; ti++) {
+                ll et = Et[ti];
+                const std::vector<int> &T = rt[ti];
+                const std::vector<int> &SU = tSUF[ti];
+                for (int i = 0; i <= Q; i++) {
+                    int sa = i < Q ? qi[i].sa : finSa, sa1 = sa + 1;
+                    if (sa < 1) continue;
+                    int ta1 = (i == 0 && vBeforeFirst) ? rkI[0] : (i < Q ? md(qi[i].lbA + (EkI < qi[i].ancA), sa1) : md(finLb + (EkI < finAnc), sa1));
+                    int src = rkI[i], dr = T[i] + (EkI < et);
+                    A2AInfo in = a2a_cost(sa1, ta1, src, dr);
+                    if (in.topWo == -2) continue;  // no move: equivalent to keep
+                    if (in.steps > a2aMax) continue;
+                    // new top index in A'' = A_i with v at t (rank T[i])
+                    int nt2;
+                    if (in.fwd) { int ip = in.topWo; nt2 = ip + (T[i] <= ip); }
+                    else nt2 = T[i];
+                    int d;
+                    if (i < Q) {
+                        int s3 = aug(i, et, T[i], -1, 0, nt2, -1);
+                        d = P[i] + in.cost + s3 - qi[i].c + SU[i + 1] + tFinA[ti];
+                    } else d = P[Q] + in.cost + fin(et, T[Q], nt2);
+                    if (d < best.delta) { best = {d, i, i, -1, ti, false}; best.a2a = true; }
+                }
             }
         }
         if (tOnly) return best;
@@ -173,7 +220,7 @@ struct Reinserter {
                 else ta1 = i < Q ? md(qi[i].lbA + (EkI < qi[i].ancA), sa1) : md(finLb + (EkI < finAnc), sa1);
                 int fa = md(rkI[i] - ta1, sa1);
                 int fb = (i < Q && sb) ? md(md(R[i], sb) - md(qi[i].lbB, sb), sb) : 0;
-                int c1 = 1 + comb_cost(fa, sa1, fb, sb);
+                int c1 = 1 + comb_sync(fa, sa1, fb, sb, i < Q ? qi[i].pr : 0, i < Q ? qi[i].prr : 0);
                 bC1ii[i] = c1;
                 if (i < Q) {
                     const QInfo &f = qi[i];
@@ -196,8 +243,8 @@ struct Reinserter {
                 int tail, c2, s2 = 0;
                 if (j < Q) {
                     const QInfo &f = qi[j];
-                    c2 = 1 + comb_cost(F2[j], f.sa, bFbC2[j], f.sb + 1);
-                    s2 = 1 + comb_cost(FS[j], f.sa + 1, bFbS2[j], f.sb);
+                    c2 = 1 + comb_sync(F2[j], f.sa, bFbC2[j], f.sb + 1, f.pr, f.prr);
+                    s2 = f.t == 2 ? FS[j] : 1 + comb_cost(FS[j], f.sa + 1, bFbS2[j], f.sb);
                     tail = s2 - f.c + SU[j + 1] + finA;
                 } else {
                     c2 = 1 + comb_cost(F2[Q], finSa, 0, 1);
@@ -242,6 +289,7 @@ struct Reinserter {
         swR.assign(m, 0); swG.assign(m, 0); swPm.assign(m, INT_MAX); swPmi.assign(m, -1);
         slotBest.assign(m, INT_MAX); slotI.assign(m, -1); slotJ.assign(m, -1);
         Best best{INT_MAX, -1, -1, -1, -1, false};
+        int bestSoFar = ubInit;
         auto pv = [&](ll key) { return posOf[key & 1023]; };
         for (int x = 0; x <= Q; x++) {
             int sa = x < Q ? qi[x].sa : finSa, sb = x < Q ? qi[x].sb : 0;
@@ -279,41 +327,61 @@ struct Reinserter {
                 int fb;
                 if (f.t == 0) { int sl = md(f.dstRaw + b2, sb1); fb = md(sl - tb_, sb1); }
                 else { int si = f.srcIdx + b2; fb = md(si - tb_, sb1); }
-                ev[a][b2] = 1 + comb_cost(faOld, sa, fb, sb1) - f.c;
+                ev[a][b2] = f.t == 2 ? 0 : 1 + comb_sync(faOld, sa, fb, sb1, f.pr, f.prr) - f.c;
             }
+            bool isAA = f.t == 2;
+            int s1AA = isAA ? a2a_cost(sa, tA, f.srcIdx, f.dstRaw).cost : 0;
             int base = SU[x + 1] + finA - f.c;
+            bool sync = f.pr | f.prr;
+            // slot-independent lower bounds: A-side rotations of s2 and c2
+            int lbS2 = isAA ? FS[x] : 1 + std::min(FS[x], sa + 1 - FS[x]);
+            int lbC2 = 1 + (sa ? std::min(F2[x], sa - F2[x]) : 0) - (f.pr + f.prr);
+            if (lbC2 < 1) lbC2 = 1;
+            int lbTail = lbS2 + base;
             for (int s = 0; s < m; s++) {
                 int R = swR[s];
                 int ltA = s < pA, ltU = s < pU;
-                // ---- j = x ----
-                int tb1 = sb ? mq(f.lbB + ltA, sb1) : 0;
-                int fbC2 = mq(R - tb1, sb1);
-                int c2 = 1 + comb_cost(F2[x], sa, fbC2, sb1);
-                int fbS2 = 0;
-                if (sb) { int Rm = R < sb ? R : R - sb; fbS2 = f.t == 0 ? mq(mq(f.dstRaw, sb) - Rm, sb) : mq(f.srcIdx - Rm, sb); }
-                int s2 = 1 + comb_cost(FS[x], sa + 1, fbS2, sb);
-                int tail = s2 + base;
-                int fb1 = sb ? mq((R < sb ? R : R - sb) - tbOld, sb) : 0;
-                int c1 = 1 + comb_cost(fa1, sa1, fb1, sb);
-                int d = P[x] + c1 + cc + tail;
-                if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = x; slotJ[s] = x; }
-                if (swPmi[s] >= 0) {
-                    int dd = swPm[s] + swG[s] + c2 + tail;
-                    if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
+                int Rm = sb ? (R < sb ? R : R - sb) : 0;
+                int fb1 = sb ? mq(Rm - tbOld, sb) : 0;
+                int c1 = 1 + (sync ? comb_sync(fa1, sa1, fb1, sb, f.pr, f.prr) : comb_cost(fa1, sa1, fb1, sb));
+                // ---- j = x (pruned by lower bound against the best found so far) ----
+                int lbJ = std::min(swPmi[s] >= 0 ? swPm[s] + swG[s] + lbC2 : INT_MAX / 2, P[x] + c1 + cc) + lbTail;
+                if (lbJ < bestSoFar) {
+                    int tb1 = sb ? mq(f.lbB + ltA, sb1) : 0;
+                    int fbS2 = 0;
+                    if (sb) fbS2 = f.t == 0 ? mq(mq(f.dstRaw, sb) - Rm, sb) : mq(f.srcIdx - Rm, sb);
+                    int s2 = isAA ? FS[x] : 1 + comb_cost(FS[x], sa + 1, fbS2, sb);
+                    int tail = s2 + base;
+                    int d = P[x] + c1 + cc + tail;
+                    if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = x; slotJ[s] = x; }
+                    if (swPmi[s] >= 0) {
+                        int fbC2 = mq(R - tb1, sb1);
+                        int c2 = 1 + (sync ? comb_sync(F2[x], sa, fbC2, sb1, f.pr, f.prr) : comb_cost(F2[x], sa, fbC2, sb1));
+                        int dd = swPm[s] + swG[s] + c2 + tail;
+                        if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
+                    }
+                    if (slotBest[s] < bestSoFar) bestSoFar = slotBest[s];
                 }
                 // ---- A_s(x) ----
-                int fbs1;
-                if (f.t == 0) { int sl = mq(f.dstRaw + ltU, sb1); fbs1 = mq(sl - R, sb1); }
-                else { int si = f.srcIdx + ltU; fbs1 = mq(si - R, sb1); }
-                int s1 = 1 + comb_cost(faS1, sa, fbs1, sb1);
                 int e = ev[ltA][ltU];
-                int Ax = P[x] + c1 + s1 - f.c - (swG[s] + e);
-                if (Ax < swPm[s]) { swPm[s] = Ax; swPmi[s] = x; }
+                int pre = P[x] + c1 - f.c - (swG[s] + e);
+                if (pre + 1 < swPm[s]) {
+                    int s1;
+                    if (isAA) s1 = s1AA;
+                    else {
+                        int fbs1;
+                        if (f.t == 0) { int sl = mq(f.dstRaw + ltU, sb1); fbs1 = mq(sl - R, sb1); }
+                        else { int si = f.srcIdx + ltU; fbs1 = mq(si - R, sb1); }
+                        s1 = 1 + comb_cost(faS1, sa, fbs1, sb1);
+                    }
+                    int Ax = pre + s1;
+                    if (Ax < swPm[s]) { swPm[s] = Ax; swPmi[s] = x; }
+                }
                 swG[s] += e;
             }
             // rank update
             if (f.t == 0) { for (int s = pU; s < m; s++) swR[s]++; }
-            else { for (int s = pU; s < m; s++) swR[s]--; }
+            else if (f.t == 1) { for (int s = pU; s < m; s++) swR[s]--; }
         }
         for (int s = 0; s < m; s++) if (slotBest[s] < best.delta) best = {slotBest[s], slotI[s], slotJ[s], s, ti0, false};
         return best;

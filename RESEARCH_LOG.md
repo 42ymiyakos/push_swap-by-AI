@@ -119,3 +119,4 @@
     init 9.6 → 5.0 s (N=500), 4.4 → 2.9 s (N=100). Dev: N=500 −3.2 (20 W / 5 L, p = 0.011), N=100 unchanged.
 55. With the faster beam: final beam 500 −9.6 (p = 0.43), stage-2 beam 40 −4.4 (p = 0.66) on 28 cases → 60-case test running.
 56. 60-case dev (dev60_u500): final beam 500 vs 300: −8.8 (34 W / 25 L, p = 0.21), consistent with −9.6 on 28 cases → v12: bw=500 for N>300.
+57. N=100 greedy stage-1 screening (bws 0): init 423 → 429, final +1.7 (p = 0.21) → keep bws 20 at N ≤ 300.

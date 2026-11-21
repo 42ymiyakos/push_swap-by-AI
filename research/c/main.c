@@ -34,7 +34,7 @@ static int cmp_sc(const void *a, const void *b) {
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1};
-    int first = 1, seglenSet = 0, bwOpt = -1, bwmOpt = -1;
+    int first = 1, seglenSet = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--dbias=", 8)) P.dbias = atoi(a + 8);
         else if (!strncmp(a, "--bw=", 5)) bwOpt = atoi(a + 5);
         else if (!strncmp(a, "--bwm=", 6)) bwmOpt = atoi(a + 6);
+        else if (!strncmp(a, "--bws=", 6)) bwsOpt = atoi(a + 6);
         else if (!strncmp(a, "--pqd=", 6)) P.pqd = atof(a + 6);
         else if (!strncmp(a, "--seglen=", 9)) { P.seglen = atoi(a + 9); seglenSet = 1; }
         else if (!strncmp(a, "--a2amax=", 9)) P.a2amax = atoi(a + 9);
@@ -88,6 +89,7 @@ int main(int argc, char **argv) {
     if (n > 300) { if (!seglenSet) P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 500; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
     if (bwOpt > 0) bw = bwOpt;
     if (bwmOpt > 0) bwm = bwmOpt;
+    if (bwsOpt >= 0) bws = bwsOpt;
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;
     double t0g = now_sec();
 

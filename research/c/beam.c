@@ -37,16 +37,24 @@ typedef struct { BS a, b, bv; int ta, tb, cost, nA, nB, parent; int16_t v; uint8
 typedef struct { float ev; int node; } Cand;
 typedef struct { int c, pos, fa, fb, mode; } Ent;
 
-static int cmp_int(const void *x, const void *y) { int a = *(const int *)x, b = *(const int *)y; return (a > b) - (a < b); }
-static int cmp_ent(const void *x, const void *y) {
-    const Ent *a = x, *b = y;
-    if (a->c != b->c) return a->c < b->c ? -1 : 1;
-    return (a->pos > b->pos) - (a->pos < b->pos);
-}
-static int cmp_cand(const void *x, const void *y) {
-    const Cand *a = x, *b = y;
-    if (a->ev != b->ev) return a->ev < b->ev ? -1 : 1;
-    return (a->node > b->node) - (a->node < b->node);
+
+/* stable bottom-up merge sort on (ev, node): same order as qsort with cmp_cand (total order) */
+static inline int cand_lt(const Cand *a, const Cand *b) { return a->ev != b->ev ? a->ev < b->ev : a->node < b->node; }
+static void cand_sort(Cand *a, int n, Cand **tmp, int *tcap) {
+    if (n < 2) return;
+    if (*tcap < n) { *tcap = 2 * n; *tmp = xrealloc(*tmp, sizeof(Cand) * *tcap); }
+    for (int i = 1; i < n; i++) { if (i % 16 == 0) continue; Cand x = a[i]; int z = i - 1; while (z >= (i / 16) * 16 && cand_lt(&x, &a[z])) { a[z + 1] = a[z]; z--; } a[z + 1] = x; }
+    Cand *src = a, *dst = *tmp;
+    for (int w = 16; w < n; w *= 2) {
+        for (int lo = 0; lo < n; lo += 2 * w) {
+            int mid = lo + w < n ? lo + w : n, hi = lo + 2 * w < n ? lo + 2 * w : n, i = lo, j = mid, k = lo;
+            while (i < mid && j < hi) dst[k++] = cand_lt(&src[j], &src[i]) ? src[j++] : src[i++];
+            while (i < mid) dst[k++] = src[i++];
+            while (j < hi) dst[k++] = src[j++];
+        }
+        Cand *t = src; src = dst; dst = t;
+    }
+    if (src != a) memcpy(a, src, sizeof(Cand) * n);
 }
 
 static float heur(const Node *s, int n, int m, const int *Bvals, int *pts) {
@@ -139,6 +147,8 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
     int ccap = 1024, nc = 0;
     Cand *cands = xmalloc(sizeof(Cand) * ccap);
     uint64_t *hs = xmalloc(sizeof(uint64_t) * (width + 1));
+    int *mark = xcalloc(m + 1, sizeof(int)), stamp = 0;
+    Cand *ctmp = NULL; int ctcap = 0;
     for (int depth = 0; depth < m; depth++) {
         nc = 0;
         for (int li = 0; li < nl; li++) {
@@ -154,9 +164,10 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
                 x = prev_set(&s.b, (x - 1 + m) % m, m); if (x < 0) break;
                 seen[ns++] = x;
             }
-            qsort(seen, ns, sizeof(int), cmp_int);
+            /* dedup by stamping (order is irrelevant: entries are ordered by (c, pos) below) */
+            stamp++;
             int u = 0;
-            for (int i = 0; i < ns; i++) if (u == 0 || seen[i] != seen[u - 1]) seen[u++] = seen[i];
+            for (int i = 0; i < ns; i++) if (mark[seen[i]] != stamp) { mark[seen[i]] = stamp; seen[u++] = seen[i]; }
             int ne = 0;
             for (int q = 0; q < u; q++) {
                 int pos = seen[q], v = Bvals[pos];
@@ -166,11 +177,25 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
                 int md, c = comb_cost(fa, sa, fb, sb, &md);
                 es[ne].c = c; es[ne].pos = pos; es[ne].fa = fa; es[ne].fb = fb; es[ne].mode = md; ne++;
             }
-            qsort(es, ne, sizeof(Ent), cmp_ent);
-            int take = 0;
-            for (int k = 0; k < ne; k++) {
-                if (take >= cand && es[k].c > es[take - 1].c) break;
-                take++;
+            /* children = all entries with c <= (cand-th smallest c), in (c, pos) order (same as a full sort) */
+            int cth = INT_MAX;
+            if (ne > cand) {
+                int top[16], nt2 = 0, kc = cand < 16 ? cand : 16;
+                for (int q = 0; q < ne; q++) {
+                    int c = es[q].c;
+                    if (nt2 < kc) { int z = nt2++; while (z > 0 && top[z - 1] > c) { top[z] = top[z - 1]; z--; } top[z] = c; }
+                    else if (c < top[kc - 1]) { int z = kc - 1; while (z > 0 && top[z - 1] > c) { top[z] = top[z - 1]; z--; } top[z] = c; }
+                }
+                cth = top[kc - 1];
+            }
+            int nsel = 0;
+            for (int q = 0; q < ne; q++) if (es[q].c <= cth) es[nsel++] = es[q];
+            for (int a = 1; a < nsel; a++) {
+                Ent x = es[a]; int z = a - 1;
+                while (z >= 0 && (es[z].c > x.c || (es[z].c == x.c && es[z].pos > x.pos))) { es[z + 1] = es[z]; z--; }
+                es[z + 1] = x;
+            }
+            for (int k = 0; k < nsel; k++) {
                 Ent *e = &es[k];
                 Node ch = s;
                 int v = Bvals[e->pos];
@@ -185,7 +210,7 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
                 cands[nc].ev = ch.ev; cands[nc].node = nall - 1; nc++;
             }
         }
-        qsort(cands, nc, sizeof(Cand), cmp_cand);
+        cand_sort(cands, nc, &ctmp, &ctcap);
         int nn = 0, nh = 0;
         for (int c = 0; c < nc; c++) {
             const Node *s = &all[cands[c].node];
@@ -225,5 +250,5 @@ void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int
     }
     int L = all[bestId].nA;
     if (bestF <= L - bestF) put(out, RRA, bestF); else put(out, RA, L - bestF);
-    free(all); free(layer); free(nxt); free(pts); free(seen); free(es); free(cands); free(hs); free(path);
+    free(mark); free(ctmp); free(all); free(layer); free(nxt); free(pts); free(seen); free(es); free(cands); free(hs); free(path);
 }

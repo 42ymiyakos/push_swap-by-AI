@@ -74,3 +74,7 @@
     N=500 neutral. Ported A2A + rotation sync to C (byte-identical to C++). v5 = A2A on by default.
     Held-out N=100 (60 cases): 362.5 vs ref 363.5 median, mean −1.73, p = 0.31.
     Valgrind reports a 'definite' leak only for -march=native builds (LSan and generic -O3 are clean): treated as a false positive.
+36. Init screening accuracy at N=500 (bwm 50, ktop 5, ...): at most −5 mean init for +4–11 s → not adopted.
+37. FAILED: IS+swap initial solutions (LIS with swappable consecutive pairs; DP + Fenwick; sa applied when a pair reaches
+    the top; converter maps sa to an A2A query). Kept values 43 → 53 at N=500, but mean init only −15 (8 cases) and
+    final +7.4 (16 cases, p = 0.41). Option --isswap=1 kept in C++ (default off), not ported to C.

@@ -28,6 +28,7 @@ struct Params {
     std::vector<int> peepK{};
     std::vector<int> chunkList{}; int kper = 3, bwm = 0;
     std::vector<int> cmodes{0, 1};
+    int isswap = 0;
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -315,6 +316,7 @@ static bool apply_opt(Params &P, const std::string &a) {
         else if (auto x = val("--kinit=")) P.kinit = atoi(x);
         else if (auto x = val("--chunklist=")) { P.chunkList.clear(); for (const char *q = x; *q;) { P.chunkList.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--kper=")) P.kper = atoi(x);
+        else if (auto x = val("--isswap=")) P.isswap = atoi(x);
         else if (auto x = val("--bwm=")) P.bwm = atoi(x);
         else if (auto x = val("--cmodes=")) { P.cmodes.clear(); for (const char *q = x; *q;) { P.cmodes.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
@@ -373,22 +375,29 @@ int main(int argc, char **argv) {
     {
         // candidate K sets: LIS from many start positions (distinct), screened with a small beam
         std::vector<std::vector<char>> Ks;
+        std::vector<std::vector<int>> Ps;  // swap pairs (empty = plain LIS)
         int starts = std::min(n, P.nlis);
+        for (int pass2 = 0; pass2 < (P.isswap ? 2 : 1); pass2++)
         for (int t = 0; t < starts; t++) {
             int st = (int)((long long)t * n / starts);
-            auto K = lis_from(a0, st);
-            if (std::find(Ks.begin(), Ks.end(), K) == Ks.end()) Ks.push_back(K);
+            std::vector<char> K; std::vector<int> pr;
+            if (pass2 == 0) K = lis_from(a0, st);
+            else { K = isswap_from(a0, st, pr); if (std::count(pr.begin(), pr.end(), -1) == (long)pr.size()) continue; }
+            bool dup = false;
+            for (size_t q = 0; q < Ks.size(); q++) if (Ks[q] == K && Ps[q] == pr) dup = true;
+            if (!dup) { Ks.push_back(K); Ps.push_back(pr); }
         }
+        auto PP = [&](int k) -> const std::vector<int> * { return Ps[k].empty() ? nullptr : &Ps[k]; };
         std::vector<int> mlist = P.chunkList.empty() ? std::vector<int>{m} : P.chunkList;
         // stage 1: greedy screening per chunk count; stage 2: small beam; stage 3: full beam on the best
         std::vector<std::tuple<size_t, int, int>> st2;  // (size, k, m + 1000*cmode)
         for (int cm : P.cmodes) for (int mm0 : mlist) {
             int mm = mm0; g_cmode = cm;
             std::vector<std::pair<size_t, int>> sc1;
-            for (int k = 0; k < (int)Ks.size(); k++) sc1.push_back({chunk_construct(a0, Ks[k], mm, P.bws, P.bc).size(), k});
+            for (int k = 0; k < (int)Ks.size(); k++) sc1.push_back({chunk_construct(a0, Ks[k], mm, P.bws, P.bc, PP(k)).size(), k});
             std::sort(sc1.begin(), sc1.end());
             for (int k = 0; k < std::min((int)sc1.size(), P.kper); k++) {
-                size_t sz = P.bwm > 0 ? chunk_construct(a0, Ks[sc1[k].second], mm, P.bwm, P.bc).size() : sc1[k].first;
+                size_t sz = P.bwm > 0 ? chunk_construct(a0, Ks[sc1[k].second], mm, P.bwm, P.bc, PP(sc1[k].second)).size() : sc1[k].first;
                 st2.push_back({sz, sc1[k].second, mm + 1000 * cm});
             }
         }
@@ -396,7 +405,7 @@ int main(int argc, char **argv) {
         std::vector<std::pair<size_t, int>> sc;
         for (int k = 0; k < std::min((int)st2.size(), std::max(P.ktop, P.kinit)); k++) {
             g_cmode = std::get<2>(st2[k]) / 1000;
-            std::vector<Op> o = chunk_construct(a0, Ks[std::get<1>(st2[k])], std::get<2>(st2[k]) % 1000, P.bw, P.bc);
+            std::vector<Op> o = chunk_construct(a0, Ks[std::get<1>(st2[k])], std::get<2>(st2[k]) % 1000, P.bw, P.bc, PP(std::get<1>(st2[k])));
             inits.push_back(o);
             sc.push_back({o.size(), std::get<1>(st2[k])});
             if (base.empty() || o.size() < base.size()) base = o;

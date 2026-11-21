@@ -233,6 +233,17 @@ static inline bool convert(const std::vector<int> &a0, const std::vector<Op> &op
         switch (o) {
         case RA: case RR: case RRA: case RRR: case RB: case RRB: break;
         case PB: case PA: break;
+        case SA: {  // swap of two init-state values in A -> A2A query (top value jumps one step forward)
+            if (liveA < 2) continue;
+            int x = A[ta].v; if (A[ta].target || trips[x]) return false;
+            int ny = nextlive(A, ta, 1);
+            trips[x]++; r.inK[x] = 0; r.isA2A[x] = 1; r.q.push_back({(int16_t)x, 2});
+            A[ta].live = false;
+            A.insert(A.begin() + ny + 1, {x, true, true});
+            if (ny + 1 <= ta) ta++;
+            ta = ny < ta ? ny : ny;  // y is the new top
+            continue;
+        }
         default: return false;
         }
         if (o == RA || o == RR) { if (liveA > 1) ta = nextlive(A, ta, 1); }

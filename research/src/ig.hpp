@@ -125,6 +125,7 @@ struct Reinserter {
     struct Best { int delta; int i, j, bi, ti; bool keep; bool a2a = false; };
     bool allowA2A = false; int a2aMax = 3;
     int ubInit = INT_MAX;
+    int sstride = 1, soff = 0;  // coarse sweep: evaluate every sstride-th slot starting at soff
     std::vector<char> isA2Aq;
 
     // r: current solution (v absent). Candidate encoded keys for B (Eb) and A targets (Et).
@@ -301,7 +302,7 @@ struct Reinserter {
             int cc = 1 + comb_cost(FC[x], sa, 0, sb + 1);
             if (x == Q) {
                 int c2 = 1 + comb_cost(F2[Q], finSa, 0, 1);
-                for (int s = 0; s < m; s++) {
+                for (int s = soff; s < m; s += sstride) {
                     int c1 = 1 + comb_cost(fa1, sa1, 0, 0);
                     int d = P[Q] + c1 + cc + finB;
                     if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = Q; slotJ[s] = Q; }
@@ -338,7 +339,7 @@ struct Reinserter {
             int lbC2 = 1 + (sa ? std::min(F2[x], sa - F2[x]) : 0) - (f.pr + f.prr);
             if (lbC2 < 1) lbC2 = 1;
             int lbTail = lbS2 + base;
-            for (int s = 0; s < m; s++) {
+            for (int s = soff; s < m; s += sstride) {
                 int R = swR[s];
                 int ltA = s < pA, ltU = s < pU;
                 int Rm = sb ? (R < sb ? R : R - sb) : 0;

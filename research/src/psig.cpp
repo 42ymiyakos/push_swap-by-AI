@@ -28,7 +28,7 @@ struct Params {
     std::vector<int> peepK{};
     std::vector<int> chunkList{}; int kper = 3, bwm = 0;
     std::vector<int> cmodes{0, 1};
-    int isswap = 0;
+    int isswap = 0, sstride = 1;
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -175,13 +175,16 @@ struct IG {
                 Reinserter::Best ub = R.solve(r, v, Eub, Et, keepOK, vBeforeFirst);
                 R.ubInit = ub.delta == INT_MAX ? INT_MAX : ub.delta + 1;
                 int ti0 = std::min(std::max(P.t0, 0), (int)Et.size() - 1);
+                R.sstride = std::max(1, std::min(P.sstride, m)); R.soff = v % R.sstride;
                 R.sweep(r, v, m, pos, ti0, vBeforeFirst);
                 std::vector<std::pair<int, int>> sc;
                 for (int q = 0; q < m; q++) sc.push_back({R.slotBest[q], q});
                 int k = std::min(m, P.topb);
                 std::partial_sort(sc.begin(), sc.begin() + k, sc.end());
-                std::vector<int> sel; for (int q = 0; q < k; q++) sel.push_back(sc[q].second);
-                std::sort(sel.begin(), sel.end());
+                std::vector<int> sel;
+                for (int q = 0; q < k; q++)
+                    for (int d = -(R.sstride - 1); d <= R.sstride - 1; d++) sel.push_back(((sc[q].second + d) % m + m) % m);
+                std::sort(sel.begin(), sel.end()); sel.erase(std::unique(sel.begin(), sel.end()), sel.end());
                 std::vector<ll> Eb2;
                 for (int q : sel) {
                     ll key;
@@ -190,7 +193,7 @@ struct IG {
                     Eb2.push_back(key * 1024 + v);
                 }
                 R.ubInit = INT_MAX;
-                int tm = R.tmode; R.tmode = 0;
+                int tm = R.tmode; R.tmode = R.sstride > 1 ? 1 : 0;
                 b = R.solve(r, v, Eb2, Et, keepOK, vBeforeFirst);
                 R.tmode = tm;
                 Eb = Eb2;
@@ -317,6 +320,7 @@ static bool apply_opt(Params &P, const std::string &a) {
         else if (auto x = val("--chunklist=")) { P.chunkList.clear(); for (const char *q = x; *q;) { P.chunkList.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--kper=")) P.kper = atoi(x);
         else if (auto x = val("--isswap=")) P.isswap = atoi(x);
+        else if (auto x = val("--sstride=")) P.sstride = atoi(x);
         else if (auto x = val("--bwm=")) P.bwm = atoi(x);
         else if (auto x = val("--cmodes=")) { P.cmodes.clear(); for (const char *q = x; *q;) { P.cmodes.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
@@ -431,7 +435,7 @@ int main(int argc, char **argv) {
     }
     double t0 = now_sec();
     // budget: total --time covers init + IG + peephole (reserve for peephole)
-    P.time = std::max(0.5, P.time - (t0 - t0g) - (n <= 150 ? 2.0 : 4.0));
+    P.time = std::max(0.5, P.time - (t0 - t0g) - (n <= 150 ? 0.8 : 1.0));
     ig.P.time = P.time;
     if (P.restarts > 1 && P.iters < 0) {
         // racing: R independent runs for frac*T, then continue the best for the rest

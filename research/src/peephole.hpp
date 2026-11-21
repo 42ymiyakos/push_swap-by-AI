@@ -96,6 +96,11 @@ static inline int optimize(const std::vector<int> &init, std::vector<Op> &ops, i
     int d1 = K / 2, d2 = (K - 1) - d1;  // total depth <= K-1
     Sim s; for (int x : init) s.a.push_back(x);
     for (size_t i = 0; i + K <= ops.size(); s.apply(ops[i]), i++) {
+        {   // rotation-only windows lie inside one push segment whose rotations are already optimal: skip
+            bool any = false;
+            for (int k = 0; k < K; k++) { Op o = ops[i + k]; if (o == PA || o == PB || o == SA || o == SB || o == SS) { any = true; break; } }
+            if (!any) continue;
+        }
         LState si{mk(s.a, K + 1), mk(s.b, K + 1)};
         LState sj = si; bool ok = true;
         for (int k = 0; k < K && ok; k++) ok = apply(sj, ops[i + k]);

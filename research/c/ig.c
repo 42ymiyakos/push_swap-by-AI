@@ -11,6 +11,7 @@ typedef struct {
     ll src, dst;
     int srcIdx, dstRaw, t, c;
     int pr, prr;  /* pending A2A rotations before this query */
+    int u;        /* moved value */
 } QInfo;
 
 typedef struct {
@@ -69,7 +70,7 @@ static void pass(RI *R, const Rep *r, ll EkI, const ll *Eb, int nb, const ll *Et
         f->sa = sa; f->sb = sb; f->ancA = ancA; f->ancB = ancB; f->pr = s->pr; f->prr = s->prr;
         f->lbA = lb_ll(s->A, sa, ancA) - ancT;
         f->lbB = lb_ll(s->B, sb, ancB);
-        Query qu = r->q[i]; int u = qu.v; f->t = qu.t;
+        Query qu = r->q[i]; int u = qu.v; f->t = qu.t; f->u = u;
         if (qu.t == 2) {
             f->src = r->ik[u] * 1024 + u; f->dst = r->tk[u] * 1024 + u;
             f->srcIdx = lb_ll(s->A, sa, f->src); f->dstRaw = lb_ll(s->A, sa, f->dst);
@@ -199,7 +200,8 @@ static int cmp_pair(const void *x, const void *y) {
     return (a->k > b->k) - (a->k < b->k);
 }
 
-static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et, int nt, int keepOK, int vbf, St *s) {
+/* everything that does not depend on the B slots: query pass, prefix sums, keep/A2A options, per-target arrays */
+static Best solve_prep(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et, int nt, int keepOK, int vbf, St *s) {
     ll EkI = r->ik[v] * 1024 + v;
     pass(R, r, EkI, Eb, nb, Et, nt, s);
     int Q = R->Q, W = R->W, Wt = Q + 2;
@@ -261,6 +263,11 @@ static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et
             }
         }
     }
+    return best;
+}
+
+/* best over the given B slots (ranks must be in R->rb), starting from a base candidate */
+static Best solve_slots(RI *R, const ll *Eb, int nb, int nt, int vbf, ll EkI, Best best) {
     if (R->tmode == 0 || nt == 1) {
         for (int bi = 0; bi < nb; bi++) { prep_b(R, bi, EkI, Eb[bi], vbf); for (int ti = 0; ti < nt; ti++) dp_bt(R, bi, ti, &best); }
     } else {
@@ -283,6 +290,29 @@ static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et
     }
     return best;
 }
+
+static Best solve(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et, int nt, int keepOK, int vbf, St *s) {
+    Best base = solve_prep(R, r, v, Eb, nb, Et, nt, keepOK, vbf, s);
+    return solve_slots(R, Eb, nb, nt, vbf, r->ik[v] * 1024 + v, base);
+}
+
+/* ranks of bl-slots (slot q lies after bl[q]) over time, from the query list: O(Q) per slot */
+static void slot_ranks(RI *R, const int *slots, int k, const int *posOf) {
+    int Q = R->Q, W = R->W;
+    grow(&R->rb, &R->rbcap, k * W + 1);
+    for (int z = 0; z < k; z++) {
+        int q = slots[z], rk = 0;
+        int *row = R->rb + z * W;
+        for (int x = 0; x < Q; x++) {
+            row[x] = rk;
+            const QInfo *f = &R->qi[x];
+            if (f->t == 0) { if (posOf[f->u] <= q) rk++; }
+            else if (f->t == 1) { if (posOf[f->u] <= q) rk--; }
+        }
+        row[Q] = rk;
+    }
+}
+
 
 /* all-slot sweep with provisional target ti0; slot s lies between bl[s] and bl[s+1]. */
 static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, int vbf) {
@@ -422,7 +452,6 @@ static int cmp_ae2(const void *x, const void *y) {
     if (a->k != b->k) return a->k < b->k ? -1 : 1;
     return (a->v > b->v) - (a->v < b->v);
 }
-static int cmp_llv(const void *x, const void *y) { ll a = *(const ll *)x, b = *(const ll *)y; return (a > b) - (a < b); }
 
 static int build_bl(IG *g, const Rep *r) {
     int m = 0;
@@ -503,22 +532,27 @@ static int reinsert(IG *g, Rep *r, int v) {
         Best b;
         const ll *EbUsed = g->Eb;
         if (m >= 2) {
-            int nub = 0;
+            int nub = 0, ubs[16];
             for (int d = 1; d <= 2; d++) for (int sg = -1; sg <= 1; sg += 2) {
                 int w = v + sg * d;
                 if (w < 0 || w >= r->n || g->pos[w] < 0) continue;
                 int qs[2] = {g->pos[w], (g->pos[w] - 1 + m) % m};
-                for (int z = 0; z < 2; z++) {
-                    int q = qs[z];
-                    ll key = q < m - 1 ? r->bk[g->bl[q]] + (r->bk[g->bl[q + 1]] - r->bk[g->bl[q]]) / 2 : r->bk[g->bl[m - 1]] + KEY_GAP;
-                    g->Eub[nub++] = key * 1024 + v;
-                }
+                for (int z = 0; z < 2; z++) ubs[nub++] = qs[z];
             }
-            qsort(g->Eub, nub, sizeof(ll), cmp_llv);
+            /* slot keys increase with the slot index: sort/dedup indices, then build keys */
+            for (int a = 1; a < nub; a++) { int x = ubs[a], c = a - 1; while (c >= 0 && ubs[c] > x) { ubs[c + 1] = ubs[c]; c--; } ubs[c + 1] = x; }
             int u2 = 0;
-            for (int k = 0; k < nub; k++) if (u2 == 0 || g->Eub[k] != g->Eub[u2 - 1]) g->Eub[u2++] = g->Eub[k];
+            for (int k = 0; k < nub; k++) if (u2 == 0 || ubs[k] != ubs[u2 - 1]) ubs[u2++] = ubs[k];
             nub = u2;
-            Best ub = solve(R, r, v, g->Eub, nub, g->Et, nEt, keepOK, vbf, &g->st);
+            for (int k = 0; k < nub; k++) {
+                int q = ubs[k];
+                ll key = q < m - 1 ? r->bk[g->bl[q]] + (r->bk[g->bl[q + 1]] - r->bk[g->bl[q]]) / 2 : r->bk[g->bl[m - 1]] + KEY_GAP;
+                g->Eub[k] = key * 1024 + v;
+            }
+            Best base = solve_prep(R, r, v, NULL, 0, g->Et, nEt, keepOK, vbf, &g->st);
+            ll EkI = r->ik[v] * 1024 + v;
+            slot_ranks(R, ubs, nub, g->pos);
+            Best ub = solve_slots(R, g->Eub, nub, nEt, vbf, EkI, base);
             R->ubInit = ub.delta == INT_MAX ? INT_MAX : ub.delta + 1;
             int ti0 = imin(imax(g->P->t0, 0), nEt - 1);
             sweep(R, r, v, m, g->pos, ti0, vbf);
@@ -538,7 +572,8 @@ static int reinsert(IG *g, Rep *r, int v) {
             }
             R->ubInit = INT_MAX;
             int tm = R->tmode; R->tmode = 0;
-            b = solve(R, r, v, g->Eb2, k, g->Et, nEt, keepOK, vbf, &g->st);
+            slot_ranks(R, sel, k, g->pos);
+            b = solve_slots(R, g->Eb2, k, nEt, vbf, EkI, base);
             R->tmode = tm;
             EbUsed = g->Eb2;
             if (ub.delta < b.delta) { b = ub; EbUsed = g->Eub; }

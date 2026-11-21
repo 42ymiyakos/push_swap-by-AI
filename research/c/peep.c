@@ -131,6 +131,11 @@ int peep_optimize(const int *init, int n, OpVec *ops, int K) {
     OpVec cand; ov_init(&cand);
     Sim s; sim_init(&s, init, n);
     for (int i = 0; i + K <= ops->n; sim_apply(&s, ops->d[i]), i++) {
+        {   /* rotation-only windows lie inside one push segment whose rotations are already optimal: skip */
+            int any = 0;
+            for (int k = 0; k < K; k++) { int o = ops->d[i + k]; if (o == PA || o == PB || o == SA || o == SB || o == SS) { any = 1; break; } }
+            if (!any) continue;
+        }
         LState si, sj;
         mk(&s.a, K + 1, &si.A); mk(&s.b, K + 1, &si.B);
         sj = si;

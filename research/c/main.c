@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
     if (P.verbose) fprintf(stderr, "init=%d t=%.2f\n", base.n, now_sec() - t0g);
     Rng rng; rng_seed(&rng, P.seed + 99);
     double t0 = now_sec();
-    P.time = P.time - (t0 - t0g) - (n <= 150 ? 2.0 : 4.0);
+    P.time = P.time - (t0 - t0g) - (n <= 150 ? 0.8 : 1.0);  /* reserve for peephole (measured ~0.5 s) */
     if (P.time < 0.5) P.time = 0.5;
     Rep best; memset(&best, 0, sizeof best);
     int bestCost; long long iters;
@@ -146,10 +146,12 @@ int main(int argc, char **argv) {
         ov_copy(&ops, &base);
     }
     int saved = 0;
+    double tp0 = now_sec();
     for (int k = 0; k < npeep; k++) saved += peep_optimize(a0, n, &ops, peepK[k]);
+    double tpeep = now_sec() - tp0;
     if (!verify_ops(a0, n, &ops)) emit(&best, &ops);
     if (P.verbose)
-        fprintf(stderr, "n=%d lis=%d constructor=%d final=%d peep=%d time=%.2f iters=%lld\n", n, lis_len, base.n, ops.n, saved,
+        fprintf(stderr, "n=%d lis=%d constructor=%d final=%d peep=%d (%.2fs) time=%.2f iters=%lld\n", n, lis_len, base.n, ops.n, saved, tpeep,
                 now_sec() - t0, iters);
     print_ops(&ops);
     ov_free(&ops); ov_free(&base); rep_free(&rep); rep_free(&best); free(a0);

@@ -34,7 +34,7 @@ static int cmp_sc(const void *a, const void *b) {
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0};
-    int first = 1;
+    int first = 1, seglenSet = 0;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -45,6 +45,9 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--ubw=", 6)) P.ubw = atoi(a + 6);
         else if (!strncmp(a, "--irot=", 7)) P.irot = atoi(a + 7);
         else if (!strncmp(a, "--dbo=", 6)) P.dbo = atoi(a + 6);
+        else if (!strncmp(a, "--pqd=", 6)) P.pqd = atof(a + 6);
+        else if (!strncmp(a, "--seglen=", 9)) { P.seglen = atoi(a + 9); seglenSet = 1; }
+        else if (!strncmp(a, "--a2amax=", 9)) P.a2amax = atoi(a + 9);
         else { fprintf(stderr, "Error\n"); return 1; }
     }
     ll *vals; int n;
@@ -79,7 +82,7 @@ int main(int argc, char **argv) {
     int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2, kper = 3, bwm = 100;
     int mlist4[5] = {2, 3, 4, 0, 0}, nm = 3;
     if (n > 150 && n <= 300) { int t[4] = {3, 4, 5, 6}; memcpy(mlist4, t, sizeof t); nm = 4; }
-    if (n > 300) { P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 300; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
+    if (n > 300) { if (!seglenSet) P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 300; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;
     double t0g = now_sec();
 

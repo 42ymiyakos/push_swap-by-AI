@@ -27,11 +27,22 @@ typedef struct {
     int nb, nt, W;  /* W = Q+1 row stride, Wt = Q+2 */
     int tmode, t0, topb, ubInit;
     int *tb; int tbcap;
-    int *Dg, *Dr; int dcap;  /* deferred range-add buffers for swG / swR */
+    int *Dg, *Dr; int dcap;
+    int *pbuf; size_t pbcap;  /* deferred range-add buffers for swG / swR */
     int allowA2A, a2aMax, irot;
 } RI;
 
-static inline int md(int x, int m) { return m > 0 ? ((x % m) + m) % m : 0; }
+/* exact ((x % m) + m) % m, with a fast path for the common range (-m, 2m) */
+static inline int md(int x, int m) {
+    if (m <= 0) return 0;
+    if (x < 0) { x += m; if (x < 0) x = ((x % m) + m) % m; }
+    else if (x >= m) { x -= m; if (x >= m) x %= m; }
+    return x;
+}
+/* comb_sync equals comb_cost when there are no pending A2A rotations */
+static inline int combs(int fa, int sa, int fb, int sb, int pr, int prr) {
+    return (pr | prr) ? comb_sync(fa, sa, fb, sb, pr, prr, NULL, NULL) : comb_cost(fa, sa, fb, sb, NULL);
+}
 static inline int mq(int x, int m) { x = x < 0 ? x + m : x; x = x >= m ? x - m : x; return m > 0 ? x : 0; }
 
 static void grow(int **p, int *cap, int need) { if (*cap < need) { *cap = need * 2; *p = xrealloc(*p, sizeof(int) * *cap); } }
@@ -115,7 +126,7 @@ static inline int aug(const RI *R, int i, ll xa, ll xb, int topAo, int topBo) {
         int sl = sa ? md(f->dstRaw + (xa >= 0 && xa < f->dst), sa) : 0;
         fa = sa ? md(sl - ta, sa) : 0;
     }
-    return 1 + comb_sync(fa, sa, fb, sb, f->pr, f->prr, NULL, NULL);
+    return 1 + combs(fa, sa, fb, sb, f->pr, f->prr);
 }
 static inline int augA(const RI *R, int i, ll xa, int ta) {
     const QInfo *f = &R->qi[i];
@@ -142,11 +153,14 @@ static int fin(const RI *R, const Rep *r, int v, ll x, int rx, int topo) {
     return imin(f, sa - f) - R->finOld;
 }
 
+/* per-slot arrays live in R->pbuf (5 arrays of W ints per slot) so that a slot is prepared only once */
+#define PB(R, bi, k) ((R)->pbuf + ((size_t)(bi) * 5 + (k)) * (R)->W)
 static void prep_b(RI *R, int bi, ll EkI, ll eb, int vbf) {
     int Q = R->Q, W = R->W;
     const int *Rr = R->rb + bi * W;
-    R->G[0] = 0;
-    for (int q = 0; q < Q; q++) R->G[q + 1] = R->G[q] + aug(R, q, -1, eb, -1, -1) - R->qi[q].c;
+    int *G = PB(R, bi, 0), *Aarr = PB(R, bi, 1), *bFbC2 = PB(R, bi, 2), *bFbS2 = PB(R, bi, 3), *bC1ii = PB(R, bi, 4);
+    G[0] = 0;
+    for (int q = 0; q < Q; q++) G[q + 1] = G[q] + aug(R, q, -1, eb, -1, -1) - R->qi[q].c;
     for (int i = 0; i <= Q; i++) {
         int sa = i < Q ? R->qi[i].sa : R->finSa, sb = i < Q ? R->qi[i].sb : 0;
         int sa1 = sa + 1, ta1;
@@ -154,42 +168,43 @@ static void prep_b(RI *R, int bi, ll EkI, ll eb, int vbf) {
         else ta1 = i < Q ? md(R->qi[i].lbA + (EkI < R->qi[i].ancA), sa1) : md(R->finLb + (EkI < R->finAnc), sa1);
         int fa = md(R->rkI[i] - ta1, sa1);
         int fb = (i < Q && sb) ? md(md(Rr[i], sb) - md(R->qi[i].lbB, sb), sb) : 0;
-        int c1 = 1 + comb_sync(fa, sa1, fb, sb, i < Q ? R->qi[i].pr : 0, i < Q ? R->qi[i].prr : 0, NULL, NULL);
-        R->bC1ii[i] = c1;
+        int c1 = 1 + combs(fa, sa1, fb, sb, i < Q ? R->qi[i].pr : 0, i < Q ? R->qi[i].prr : 0);
+        bC1ii[i] = c1;
         if (i < Q) {
             const QInfo *f = &R->qi[i];
             int s1 = aug(R, i, -1, eb, f->sa ? md(R->rkI[i], f->sa) : 0, Rr[i]);
-            R->Aarr[i] = R->P[i] + c1 + s1 - f->c - R->G[i + 1];
+            Aarr[i] = R->P[i] + c1 + s1 - f->c - G[i + 1];
             int sb1 = f->sb + 1;
             int tb1 = md(f->lbB + (eb < f->ancB), sb1);
-            R->bFbC2[i] = md(Rr[i] - tb1, sb1);
-            R->bFbS2[i] = augB(R, i, f->sb ? md(Rr[i], f->sb) : 0);
-        } else { R->bFbC2[i] = 0; R->bFbS2[i] = 0; }
+            bFbC2[i] = md(Rr[i] - tb1, sb1);
+            bFbS2[i] = augB(R, i, f->sb ? md(Rr[i], f->sb) : 0);
+        } else { bFbC2[i] = 0; bFbS2[i] = 0; }
     }
 }
 
 static void dp_bt(const RI *R, int bi, int ti, Best *bst) {
     int Q = R->Q, Wt = Q + 2, W = R->W;
+    const int *G = PB(R, bi, 0), *Aarr = PB(R, bi, 1), *bFbC2 = PB(R, bi, 2), *bFbS2 = PB(R, bi, 3), *bC1ii = PB(R, bi, 4);
     const int *SU = R->tSUF + ti * Wt, *F2 = R->tF2 + ti * W, *FS = R->tFS + ti * W, *FC = R->tFC + ti * W;
     int finA = R->tFinA[ti], finB = R->tFinB[ti];
     int pm = INT_MAX, pmi = -1;
     for (int j = 0; j <= Q; j++) {
-        if (j >= 1 && R->Aarr[j - 1] < pm) { pm = R->Aarr[j - 1]; pmi = j - 1; }
+        if (j >= 1 && Aarr[j - 1] < pm) { pm = Aarr[j - 1]; pmi = j - 1; }
         int tail, c2;
         if (j < Q) {
             const QInfo *f = &R->qi[j];
-            c2 = 1 + comb_sync(F2[j], f->sa, R->bFbC2[j], f->sb + 1, f->pr, f->prr, NULL, NULL);
-            int s2 = f->t == 2 ? FS[j] : 1 + comb_cost(FS[j], f->sa + 1, R->bFbS2[j], f->sb, NULL);
+            c2 = 1 + combs(F2[j], f->sa, bFbC2[j], f->sb + 1, f->pr, f->prr);
+            int s2 = f->t == 2 ? FS[j] : 1 + comb_cost(FS[j], f->sa + 1, bFbS2[j], f->sb, NULL);
             tail = s2 - f->c + SU[j + 1] + finA;
         } else {
             c2 = 1 + comb_cost(F2[Q], R->finSa, 0, 1, NULL);
             tail = finB;
         }
-        int Bj = R->G[j] + c2 + tail;
+        int Bj = G[j] + c2 + tail;
         if (pmi >= 0 && pm + Bj < bst->delta) { bst->delta = pm + Bj; bst->i = pmi; bst->j = j; bst->bi = bi; bst->ti = ti; bst->keep = 0; bst->a2a = 0; }
         int sa = j < Q ? R->qi[j].sa : R->finSa, sb = j < Q ? R->qi[j].sb : 0;
         int cc = 1 + comb_cost(FC[j], sa, 0, sb + 1, NULL);
-        int d = R->P[j] + R->bC1ii[j] + cc + tail;
+        int d = R->P[j] + bC1ii[j] + cc + tail;
         if (d < bst->delta) { bst->delta = d; bst->i = j; bst->j = j; bst->bi = bi; bst->ti = ti; bst->keep = 0; bst->a2a = 0; }
     }
 }
@@ -269,6 +284,8 @@ static Best solve_prep(RI *R, const Rep *r, int v, const ll *Eb, int nb, const l
 
 /* best over the given B slots (ranks must be in R->rb), starting from a base candidate */
 static Best solve_slots(RI *R, const ll *Eb, int nb, int nt, int vbf, ll EkI, Best best) {
+    {   size_t need = (size_t)(nb + 1) * 5 * R->W;
+        if (R->pbcap < need) { R->pbcap = 2 * need; R->pbuf = xrealloc(R->pbuf, sizeof(int) * R->pbcap); } }
     if (R->tmode == 0 || nt == 1) {
         for (int bi = 0; bi < nb; bi++) { prep_b(R, bi, EkI, Eb[bi], vbf); for (int ti = 0; ti < nt; ti++) dp_bt(R, bi, ti, &best); }
     } else {
@@ -283,10 +300,8 @@ static Best solve_slots(RI *R, const ll *Eb, int nb, int nt, int vbf, ll EkI, Be
         }
         int k = imin(nb, R->topb);
         qsort(cand, nb, sizeof(Pair), cmp_pair);
-        for (int c = 0; c < k; c++) {
-            prep_b(R, cand[c].k, EkI, Eb[cand[c].k], vbf);
+        for (int c = 0; c < k; c++)  /* slot arrays are still in pbuf: no recomputation */
             for (int ti = 0; ti < nt; ti++) dp_bt(R, cand[c].k, ti, &best);
-        }
         free(cand);
     }
     return best;
@@ -375,7 +390,7 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
             int tb_ = sb ? md(f->lbB + a, sb1) : 0, fb;
             if (f->t == 0) { int sl = md(f->dstRaw + b2, sb1); fb = md(sl - tb_, sb1); }
             else { int si = f->srcIdx + b2; fb = md(si - tb_, sb1); }
-            ev[a][b2] = f->t == 2 ? 0 : 1 + comb_sync(faOld, sa, fb, sb1, f->pr, f->prr, NULL, NULL) - f->c;
+            ev[a][b2] = f->t == 2 ? 0 : 1 + combs(faOld, sa, fb, sb1, f->pr, f->prr) - f->c;
         }
         int isAA = f->t == 2;
         int s1AA = isAA ? a2a_cost(sa, tA, f->srcIdx, f->dstRaw).cost : 0;
@@ -417,7 +432,7 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
         for (int Rv = 0; Rv < nR; Rv++) {
             int Rm = sb ? (Rv < sb ? Rv : Rv - sb) : 0;
             int fb1 = sb ? mq(Rm - tbOld, sb) : 0;
-            Tc1[Rv] = 1 + (sync ? comb_sync(fa1, sa1, fb1, sb, f->pr, f->prr, NULL, NULL) : comb_cost(fa1, sa1, fb1, sb, NULL));
+            Tc1[Rv] = 1 + (sync ? combs(fa1, sa1, fb1, sb, f->pr, f->prr) : comb_cost(fa1, sa1, fb1, sb, NULL));
         }
         if (farA) {
             for (int s = 0; s < m; s++) {
@@ -431,7 +446,7 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
                     int s2 = isAA ? FS[x] : 1 + comb_cost(FS[x], sa + 1, fbS2, sb, NULL);
                     int tail = s2 + base;
                     int fbC2 = mq(Rv - tb1, sb1);
-                    int c2 = 1 + (sync ? comb_sync(F2[x], sa, fbC2, sb1, f->pr, f->prr, NULL, NULL) : comb_cost(F2[x], sa, fbC2, sb1, NULL));
+                    int c2 = 1 + (sync ? combs(F2[x], sa, fbC2, sb1, f->pr, f->prr) : comb_cost(F2[x], sa, fbC2, sb1, NULL));
                     int dd = swPm[s] + swG[s] + c2 + tail;
                     if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
                     if (slotBest[s] < bestSoFar) bestSoFar = slotBest[s];
@@ -455,7 +470,7 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
                 if (d < slotBest[s]) { slotBest[s] = d; slotI[s] = x; slotJ[s] = x; }
                 if (swPmi[s] >= 0) {
                     int fbC2 = mq(Rv - tb1, sb1);
-                    int c2 = 1 + (sync ? comb_sync(F2[x], sa, fbC2, sb1, f->pr, f->prr, NULL, NULL) : comb_cost(F2[x], sa, fbC2, sb1, NULL));
+                    int c2 = 1 + (sync ? combs(F2[x], sa, fbC2, sb1, f->pr, f->prr) : comb_cost(F2[x], sa, fbC2, sb1, NULL));
                     int dd = swPm[s] + swG[s] + c2 + tail;
                     if (dd < slotBest[s]) { slotBest[s] = dd; slotI[s] = swPmi[s]; slotJ[s] = x; }
                 }
@@ -691,6 +706,8 @@ static int pick_destroy(IG *g, const Rep *r) {
     return nD;
 }
 
+static int has_a2a(const Rep *r) { for (int k = 0; k < r->nq; k++) if (r->q[k].t == 2) return 1; return 0; }
+
 static IG *g_ig;
 static int cmp_ord(const void *x, const void *y) {
     int a = *(const int *)x, b = *(const int *)y;
@@ -732,12 +749,19 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
             if (qd) { rep_remove_queries(&w, v); w.inK[v] = 1; w.isA2A[v] = 0; w.tk[v] = w.ik[v]; w.ph[v] = 1; }
             else remove_value(&w, v);
         }
-        int c = full_cost(&w);
+        /* c must equal full_cost(&w) after every step. The DP delta is exact when the solution holds no A2A
+         * query before and after the reinsertion; otherwise the exact cost is recomputed. */
+        int c = full_cost(&w), cvalid = 1;
         for (int z = 0; z < nD; z++) {
             int v = g.D[g.ord[z]];
-            if (qd) { w.ph[v] = 0; remove_value(&w, v); c = full_cost(&w); }
-            c += reinsert(&g, &w, v);
-            if (P->a2a) c = full_cost(&w);  /* DP is approximate around A2A queries: use the exact cost */
+            if (qd) {
+                w.ph[v] = 0; remove_value(&w, v);
+                if (P->a2a && has_a2a(&w)) cvalid = 0; else { c = full_cost(&w); cvalid = 1; }
+            }
+            int pre_a2a = P->a2a && has_a2a(&w);
+            int d = reinsert(&g, &w, v);
+            if (P->a2a && (!cvalid || pre_a2a || has_a2a(&w))) { c = full_cost(&w); cvalid = 1; }
+            else c += d;
         }
         int h = hist[it % hl];
         if (c <= curCost || c <= h) {
@@ -754,5 +778,5 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     RI *R = &g.R;
     free(R->qi); free(R->rkI); free(R->P); free(R->G); free(R->Aarr); free(R->bFbC2); free(R->bFbS2); free(R->bC1ii);
     free(R->rb); free(R->rt); free(R->tSUF); free(R->tF2); free(R->tFS); free(R->tFC); free(R->tFinA); free(R->tFinB);
-    free(R->Dg); free(R->Dr); free(R->tb); free(R->swR); free(R->swG); free(R->swPm); free(R->swPmi); free(R->slotBest); free(R->slotI); free(R->slotJ);
+    free(R->pbuf); free(R->Dg); free(R->Dr); free(R->tb); free(R->swR); free(R->swG); free(R->swPm); free(R->swPmi); free(R->slotBest); free(R->slotI); free(R->slotJ);
 }

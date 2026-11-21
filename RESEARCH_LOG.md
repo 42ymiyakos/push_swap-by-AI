@@ -99,3 +99,10 @@
     on min_s(prefix-min + middle-effect sum) proves that no slot passes the B2A test; the middle-effect and rank updates are
     deferred as range adds (difference arrays) and materialized only when needed. 300 iterations: 15.5 → 13.5 s.
     Dev N=500 (28 cases): −13.6, 28 W / 0 L.
+47. v8 held-out (60 cases): N=500 2884 median, mean −68.3 vs reference (49 W / 11 L); N=100 361.5, −2.1 (p = 0.18).
+48. FAILED: BOrder-segment destroy (dbo 2/4): N=100 +0.6 / +2.55.
+    Parameter re-tune at N=100 (pqd 0.25/0.75, seglen 5/12, a2amax 2): all worse (+1.1..+3.6). The time-limited N=100 result
+    is nearly deterministic (base rerun differs in 1 of 40 cases), so these differences are real: the defaults are a local optimum.
+    6 s vs 15 s at N=100: 361.9 vs 356.4, and the best of 2 seeds × 6 s is 359.3 → multi-start rejected; time (speed) matters at N=100 too.
+49. v9 (C, identical output): per-slot prep arrays cached (no recomputation for the top-3 in tmode 1); exact fast modulo; comb_cost
+    fast path when there are no pending A2A rotations. About 12% faster at N=100.

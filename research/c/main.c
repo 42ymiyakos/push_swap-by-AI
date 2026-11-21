@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
     int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2, kper = 3, bwm = 100;
     int mlist4[5] = {2, 3, 4, 0, 0}, nm = 3;
     if (n > 150 && n <= 300) { int t[4] = {3, 4, 5, 6}; memcpy(mlist4, t, sizeof t); nm = 4; }
-    if (n > 300) { if (!seglenSet) P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 300; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
+    if (n > 300) { if (!seglenSet) P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 500; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
     if (bwOpt > 0) bw = bwOpt;
     if (bwmOpt > 0) bwm = bwmOpt;
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;

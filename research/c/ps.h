@@ -103,6 +103,7 @@ static inline int topv(const ll *s, int n, int t) { return n == 0 ? -1 : (int)(s
 /* ---------- construction ---------- */
 void lis_from(const int *a, int n, int s, char *mask);
 void circular_lis(const int *a, int n, Rng *rng, char *mask);
+extern int g_cmode;
 void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int bc, OpVec *out);
 void beam_solve(int n, const int *Avals, int na, int topA, const int *Bvals, int nbv, int width, int cand, OpVec *out);
 

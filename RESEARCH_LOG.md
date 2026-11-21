@@ -41,3 +41,24 @@
 22. C port of PSIG (research/c, ~1300 lines, default configuration only). C++ sorts made deterministic
     (tie-breaks in beam/IG/peephole) so both versions are byte-identical with fixed --iters (verified on
     n=5,10,50,100,500 + special sets). ASan/UBSan/Valgrind clean. eval2: N=100 375, N=500 3029.5.
+
+## 2026-11-21 — session 1 (continued, after repository hand-over)
+23. Diagnosis of N=500 variance (eval2): final result tracks the initial solution almost monotonically
+    (init 3305–3330 → final 2848–2905; init 3626–3705 → final 3038–3245).
+24. Initial solution: chunk count matters per instance (case: m=4..10 → 3683/3946/3705/3650/3495/3528).
+    New construction = greedy screening of all LIS candidates per chunk count, small beam on the top 3 per
+    count, full beam on the overall top 3. N=500 (counts 4,6,8,10,12, small beam 20): bad cases −200..−250.
+    N=100 (counts 2,3,4, small beam 100): mean init 445 → 423 (= reference initial median).
+25. dev40_u500 (12 cases, 40 s): v2 3014 → v3 2927.5 median (mean 3015 → 2954); ref 2959.5 / 2968; 9/12 wins.
+    Final beam 300 instead of 100: mean 2953.6 → 2940.1; 600 worse (less IG time).
+26. dev40_u100 (20 cases): v2 375.5 → v3 365.0 (10 s); 16 s: 362.0 (ref 362.5).
+27. Bug: passing any large-n option disabled all size-dependent defaults; fixed (defaults first, explicit
+    options override).
+28. Fresh held-out eval3 (20+20 cases, C port v3 vs reference): N=100 median 364.0 vs 364.5, mean 363.2 vs
+    365.8, 11/20 wins (13.7 s vs 16.1 s); N=500 median 2915 vs 2963.5, mean 2944 vs 2960, 12/20 wins
+    (36.7 s vs 44.4 s). Paired sign-flip p ≈ 0.39 / 0.43 → parity, not a statistically credible win.
+    Weakness: N=500 spread (sd 89 vs 40).
+29. Worst dev case (init 3575): 120 s still 3049 (ref 3028); wider chunk-count search no help.
+    Equal-count chunk boundaries (cmode 1) give 3285 on it. v4 = both chunk modes in the candidate pool:
+    dev40_u500 median 2927 / mean 2938 / sd 49 / max 3075 (v3: 2923.5 / 2940 / 63 / 3109);
+    dev40_u100 (15 s) 362.0 / 363.3; N=100 mean init 422.6 → 417.7.

@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
         char *K = xmalloc(n);
         circular_lis(a0, n, &rr, K);
         int m = imax(2, n / 80); if (m > 120) m = 120;
+        g_cmode = 0;
         chunk_construct(a0, n, K, m, 0, 2, &ops);
         print_ops(&ops); ov_free(&ops); free(K); free(a0); return 0;
     }
@@ -90,17 +91,17 @@ int main(int argc, char **argv) {
         if (dup) free(K); else Ks[nK++] = K;
     }
     /* stage 1: greedy screening per chunk count; stage 2: small beam (kper per count); stage 3: full beam */
-    SC *sc = xmalloc(sizeof(SC) * nK), *st2 = xmalloc(sizeof(SC) * (nm * kper + 1));
-    int *st2m = xmalloc(sizeof(int) * (nm * kper + 1)), n2 = 0;
+    SC *sc = xmalloc(sizeof(SC) * nK), *st2 = xmalloc(sizeof(SC) * (2 * nm * kper + 1));
+    int *st2m = xmalloc(sizeof(int) * (2 * nm * kper + 1)), n2 = 0;
     OpVec tmp; ov_init(&tmp);
-    for (int mi = 0; mi < nm; mi++) {
-        int mm = mlist4[mi];
+    for (int cm = 0; cm < 2; cm++) for (int mi = 0; mi < nm; mi++) {
+        int mm = mlist4[mi]; g_cmode = cm;
         for (int k = 0; k < nK; k++) { chunk_construct(a0, n, Ks[k], mm, bws, bc, &tmp); sc[k].size = tmp.n; sc[k].k = k; }
         qsort(sc, nK, sizeof(SC), cmp_sc);
         for (int k = 0; k < imin(nK, kper); k++) {
             int sz = sc[k].size;
             if (bwm > 0) { chunk_construct(a0, n, Ks[sc[k].k], mm, bwm, bc, &tmp); sz = tmp.n; }
-            st2[n2].size = sz; st2[n2].k = sc[k].k; st2m[n2] = mm; n2++;
+            st2[n2].size = sz; st2[n2].k = sc[k].k; st2m[n2] = mm + 1000 * cm; n2++;
         }
     }
     /* sort (size, k, m) */
@@ -114,7 +115,8 @@ int main(int argc, char **argv) {
     OpVec base; ov_init(&base);
     int haveBase = 0;
     for (int k = 0; k < imin(n2, ktop); k++) {
-        chunk_construct(a0, n, Ks[st2[k].k], st2m[k], bw, bc, &tmp);
+        g_cmode = st2m[k] / 1000;
+        chunk_construct(a0, n, Ks[st2[k].k], st2m[k] % 1000, bw, bc, &tmp);
         if (!haveBase || tmp.n < base.n) { ov_copy(&base, &tmp); haveBase = 1; }
     }
     sc[0].k = st2[0].k;

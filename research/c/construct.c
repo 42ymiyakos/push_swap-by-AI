@@ -36,7 +36,11 @@ void circular_lis(const int *a, int n, Rng *rng, char *mask) {
 typedef struct { Sim s; OpVec *ops; } Builder;
 static void bop(Builder *b, int o, int k) { for (int i = 0; i < k; i++) { sim_apply(&b->s, o); ov_push(b->ops, o); } }
 
+int g_cmode = 0;  /* 0: equal value ranges, 1: equal counts of moved values */
 void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int bc, OpVec *out) {
+    int *crank = xmalloc(sizeof(int) * n), nmv = 0;
+    for (int v = 0; v < n; v++) { crank[v] = nmv; if (!inK[v]) nmv++; }
+#define CHUNK(v) (g_cmode == 1 && nmv > 0 ? m - 1 - (int)((long long)crank[v] * m / nmv) : m - 1 - (int)((long long)(v) * m / n))
     Builder b; sim_init(&b.s, a0, n); b.ops = out; out->n = 0;
     int rt[64][2], nr = 0;  /* rounds: (top chunk, bottom chunk) */
     if (m % 2 == 1) { rt[nr][0] = m / 2; rt[nr][1] = -1; nr++; for (int r = 1; r <= m / 2; r++) { rt[nr][0] = m / 2 - r; rt[nr][1] = m / 2 + r; nr++; } }
@@ -49,7 +53,7 @@ void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int b
             for (int i = 0; i < sa; i++) {
                 int v = dq_get(&b.s.a, i);
                 if (inK[v]) continue;
-                int c = m - 1 - (int)((long long)v * m / n);
+                int c = CHUNK(v);
                 if (c != tc && c != bcn) continue;
                 int top = c == tc;
                 int f = i, cf = top ? imax(f, pending) : f;
@@ -59,7 +63,7 @@ void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int b
             }
             if (bi < 0) break;
             int v = dq_get(&b.s.a, bi);
-            int top = (m - 1 - (int)((long long)v * m / n)) == tc;
+            int top = CHUNK(v) == tc;
             if (bdir == 0) {
                 int f = bi, k = imin(f, pending);
                 bop(&b, RR, k); pending -= k; bop(&b, RA, f - k);
@@ -80,7 +84,7 @@ void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int b
         OpVec rest; ov_init(&rest);
         beam_solve(n, Av, na, na ? Av[0] : 0, Bv, nb, bw, bc, &rest);
         for (int i = 0; i < rest.n; i++) bop(&b, rest.d[i], 1);
-        ov_free(&rest); free(Av); free(Bv); sim_free(&b.s);
+        ov_free(&rest); free(Av); free(Bv); sim_free(&b.s); free(crank);
         return;
     }
     int *idxA = xmalloc(sizeof(int) * n), *succ = xmalloc(sizeof(int) * n);
@@ -112,5 +116,6 @@ void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int b
     int sa = b.s.a.len, i0 = 0;
     for (int i = 0; i < sa; i++) if (dq_get(&b.s.a, i) == 0) i0 = i;
     if (i0 <= sa - i0) bop(&b, RA, i0); else bop(&b, RRA, sa - i0);
-    free(idxA); free(succ); free(inA); sim_free(&b.s);
+    free(idxA); free(succ); free(inA); sim_free(&b.s); free(crank);
+#undef CHUNK
 }

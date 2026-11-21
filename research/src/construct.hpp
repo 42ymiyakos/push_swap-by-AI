@@ -54,10 +54,14 @@ struct Builder {
 // Chunk construction: non-K values are pushed to B in value-range chunks built middle-out
 // (top chunk / bottom chunk pairs), then greedily inserted back with minimal combined rotation.
 #include "beam.hpp"
+static int g_cmode = 0;
 static inline std::vector<Op> chunk_construct(const std::vector<int> &a0, const std::vector<char> &inK, int m, int bw = 0, int bc = 2) {
     int n = a0.size();
     Builder b; for (int x : a0) b.s.a.push_back(x);
-    auto chunk = [&](int v) { return m - 1 - (int)((long long)v * m / n); };  // 0 = largest values
+    // chunk index (0 = largest values): equal value ranges (cmode 0) or equal counts of moved values (cmode 1)
+    std::vector<int> crank(n, 0); int nmv = 0;
+    for (int v = 0; v < n; v++) { crank[v] = nmv; if (!inK[v]) nmv++; }
+    auto chunk = [&](int v) { return g_cmode == 1 && nmv > 0 ? m - 1 - (int)((long long)crank[v] * m / nmv) : m - 1 - (int)((long long)v * m / n); };
     // rounds: list of (top chunk, bottom chunk); -1 if none
     std::vector<std::pair<int, int>> rounds;
     if (m % 2 == 1) { rounds.push_back({m / 2, -1}); for (int r = 1; r <= m / 2; r++) rounds.push_back({m / 2 - r, m / 2 + r}); }

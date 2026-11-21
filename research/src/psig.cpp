@@ -27,6 +27,7 @@ struct Params {
     double pqd = 0;
     std::vector<int> peepK{};
     std::vector<int> chunkList{}; int kper = 3, bwm = 0;
+    std::vector<int> cmodes{0, 1};
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -315,6 +316,7 @@ static bool apply_opt(Params &P, const std::string &a) {
         else if (auto x = val("--chunklist=")) { P.chunkList.clear(); for (const char *q = x; *q;) { P.chunkList.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--kper=")) P.kper = atoi(x);
         else if (auto x = val("--bwm=")) P.bwm = atoi(x);
+        else if (auto x = val("--cmodes=")) { P.cmodes.clear(); for (const char *q = x; *q;) { P.cmodes.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--a2amax=")) P.a2amax = atoi(x);
         else if (auto x = val("--ginit=")) P.ginit = atoi(x);
@@ -379,20 +381,22 @@ int main(int argc, char **argv) {
         }
         std::vector<int> mlist = P.chunkList.empty() ? std::vector<int>{m} : P.chunkList;
         // stage 1: greedy screening per chunk count; stage 2: small beam; stage 3: full beam on the best
-        std::vector<std::tuple<size_t, int, int>> st2;  // (size, k, m)
-        for (int mm : mlist) {
+        std::vector<std::tuple<size_t, int, int>> st2;  // (size, k, m + 1000*cmode)
+        for (int cm : P.cmodes) for (int mm0 : mlist) {
+            int mm = mm0; g_cmode = cm;
             std::vector<std::pair<size_t, int>> sc1;
             for (int k = 0; k < (int)Ks.size(); k++) sc1.push_back({chunk_construct(a0, Ks[k], mm, P.bws, P.bc).size(), k});
             std::sort(sc1.begin(), sc1.end());
             for (int k = 0; k < std::min((int)sc1.size(), P.kper); k++) {
                 size_t sz = P.bwm > 0 ? chunk_construct(a0, Ks[sc1[k].second], mm, P.bwm, P.bc).size() : sc1[k].first;
-                st2.push_back({sz, sc1[k].second, mm});
+                st2.push_back({sz, sc1[k].second, mm + 1000 * cm});
             }
         }
         std::sort(st2.begin(), st2.end());
         std::vector<std::pair<size_t, int>> sc;
         for (int k = 0; k < std::min((int)st2.size(), std::max(P.ktop, P.kinit)); k++) {
-            std::vector<Op> o = chunk_construct(a0, Ks[std::get<1>(st2[k])], std::get<2>(st2[k]), P.bw, P.bc);
+            g_cmode = std::get<2>(st2[k]) / 1000;
+            std::vector<Op> o = chunk_construct(a0, Ks[std::get<1>(st2[k])], std::get<2>(st2[k]) % 1000, P.bw, P.bc);
             inits.push_back(o);
             sc.push_back({o.size(), std::get<1>(st2[k])});
             if (base.empty() || o.size() < base.size()) base = o;

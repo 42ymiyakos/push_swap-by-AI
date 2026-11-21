@@ -76,3 +76,26 @@ Seed variance at 5 s (4 seeds): case2 370–389, case3 372–391.
 See BEST_RESULTS.md. N=100: 378 vs ref 361 (wins 2/20). N=500: 3026.5 vs ref 2985 (wins 5/12).
 
 ## E12 Final evaluation v2 (fresh `eval2_*`): see BEST_RESULTS.md.
+
+## E13 Initial-solution search over chunk counts (v3)
+| Set | Config | Mean init | Init time |
+|---|---|---:|---:|
+| dev40_u100 (10) | v3 default (m∈{2,3,4}) | 423.3 | 2.6 s |
+| dev40_u100 (10) | + m=5 / kper 6 / ktop 6 / bw 3000 / nlis 100 | 422.3–423.3 | up to 5.5 s |
+| dev40_u500 (8) | v3 (m∈{4..12 even}, bw 100) | 3398.4 | 4.5 s |
+| dev40_u500 (8) | + m 14,16 | 3398.4 | 5.4 s |
+| dev40_u500 (8) | kper 5 | 3381.4 | 6.0 s |
+| dev40_u500 (8) | final beam 300 | 3344.1 | 8.9 s |
+
+## E14 Final results v3 (dev sets)
+| Set | Solver | Median | Mean | Std |
+|---|---|---:|---:|---:|
+| dev40_u500 (12) | v2 | 3014.0 | 3015.1 | 82.8 |
+| dev40_u500 (12) | v3 bw100 | 2927.5 | 2953.6 | 71.1 |
+| dev40_u500 (12) | v3 bw300 | 2923.5 | 2940.1 | 63.2 |
+| dev40_u500 (12) | v3 bw600 | 2950.5 | 2968.4 | 69.7 |
+| dev40_u500 (12) | reference | 2959.5 | 2968.3 | |
+| dev40_u100 (20) | v2 10 s | 375.5 | 374.5 | 12.3 |
+| dev40_u100 (20) | v3 10 s | 365.0 | 365.6 | 12.0 |
+| dev40_u100 (20) | v3 16 s | 362.0 | 363.7 | 11.6 |
+| dev40_u100 (20) | reference | 362.5 | 361.2 | 9.0 |

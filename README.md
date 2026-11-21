@@ -7,11 +7,11 @@ operations as possible, always correct.
 
 | N | This repository (C version) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
 |---:|---:|---:|---:|
-| 100 | **361.0** (about 15 s) | 363.5 (about 17 s) | 608 |
+| 100 | **356.5** (about 15 s) | 363.5 (about 17 s) | 608 |
 | 500 | **2849.5** (about 40 s) | 2967.5 (about 48 s) | 5349 |
 
 - n ≤ 8 is solved optimally by exhaustive search (n=3: at most 2 ops, n=5: at most 8 ops).
-- N=500: on average 92.9 operations fewer than the reference (p < 0.0001, 49 wins out of 60). N=100: slightly better (mean −2.9, 37 wins out of 60, p = 0.07).
+- Both sizes are significantly better than the reference: N=500 by 91.5 operations on average (p < 0.0001, 49 wins out of 60), N=100 by 6.2 operations (p = 0.0003, 48 wins, 2 ties, 10 losses).
 - Full figures, conditions and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
 
 ## Quick start (C version)

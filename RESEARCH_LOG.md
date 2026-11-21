@@ -126,3 +126,4 @@
     K=200 M=2 −1.73 (24 W / 10 L, p = 0.033), M=5 +0.05. N=500 (K=200, M=2): −1.0 (11 W / 5 L, rarely triggers).
     v13: kick 200 / ×2 default.
 60. Kick from the best solution instead of the current one (kickbest): −0.17 (p = 0.85) → option only. Kick thresholds 100/300 (×2) ≈ 200.
+61. v13 held-out (60 cases): N=100 356.5 median, mean −6.18 vs reference (CI [−9.0, −3.3], 48 W / 2 T / 10 L, p = 0.0003) → significant for both sizes; N=500 2849.5, −91.5.

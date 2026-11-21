@@ -1,4 +1,19 @@
-# BEST RESULTS (updated 2026-11-21, v12)
+# BEST RESULTS (updated 2026-11-21, v13)
+
+## v13 (C) vs reference — held-out eval3 + eval4, 60 cases per size, identical inputs
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 100 | **PSIG v13 (C, 15 s)** | **356.5** | **357.7** | 8.3 | 384 | 14.8 |
+| 100 | reference | 363.5 | 363.9 | 9.3 | 388 | 16.9 |
+| 500 | **PSIG v13 (C, 40 s)** | **2849.5** | **2876.0** | 75.1 | 3061 | 39.4 |
+| 500 | reference | 2967.5 | 2967.5 | 34.3 | 3041 | 47.7 |
+
+Paired (ours − reference):
+- N=100: mean **−6.18**, 95% CI [−9.0, −3.3], 48 W / 2 T / 10 L, **p = 0.0003**.
+- N=500: mean **−91.5**, 95% CI [−109.9, −72.2], 49 W / 11 L, **p < 0.0001**.
+→ **PSIG v13 (C) is the best known solver for both N=100 and N=500** (faster and with about 1/4–1/5 of the memory).
+Commit `b9142b0`.
+
 
 ## v12 (C) vs reference — held-out eval3 + eval4, 60 cases per size
 | N | Solver | Median | Mean | Std | Max | s/case |

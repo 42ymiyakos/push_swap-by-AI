@@ -5,6 +5,7 @@
 #include "construct.hpp"
 #include "exact.hpp"
 #include "ig.hpp"
+#include "peephole.hpp"
 #include <chrono>
 #include <cmath>
 
@@ -23,6 +24,7 @@ struct Params {
     int tmode = 1, t0 = 0, topb = 3;
     int twophase = 0;
     double pqd = 0;
+    std::vector<int> peepK{};
     int restarts = 1; double rfrac = 0.5; int kinit = 1;
     int brand = 2, ginit = 0, sweep = 0, a2a = 0, a2amax = 3;
     int bw = 1000, bws = 20, bc = 2, nlis = 50, ktop = 3;
@@ -296,7 +298,7 @@ int main(int argc, char **argv) {
     // size-dependent defaults (overridable): tuned on train/dev sets, see EXPERIMENTS.md
     P.sweep = 1; P.pqd = 0.5; P.time = -1;
     int first = 1;
-    bool setLarge = false;
+    bool setLarge = false, setPeep = false;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         std::string a = argv[first];
         auto val = [&](const char *k) -> const char * { size_t L = strlen(k); return a.compare(0, L, k) == 0 ? a.c_str() + L : nullptr; };
@@ -315,6 +317,7 @@ int main(int argc, char **argv) {
         else if (auto x = val("--restarts=")) P.restarts = atoi(x);
         else if (auto x = val("--rfrac=")) P.rfrac = atof(x);
         else if (auto x = val("--kinit=")) P.kinit = atoi(x);
+        else if (auto x = val("--peep=")) { P.peepK.clear(); for (const char *q = x; *q;) { P.peepK.push_back(atoi(q)); while (*q && *q != ',') q++; if (*q) q++; } }
         else if (auto x = val("--a2amax=")) P.a2amax = atoi(x);
         else if (auto x = val("--ginit=")) P.ginit = atoi(x);
         else if (auto x = val("--bw=")) P.bw = atoi(x);
@@ -331,6 +334,7 @@ int main(int argc, char **argv) {
         else if (auto x = val("--verbose=")) P.verbose = atoi(x);
         else if (auto x = val("--check=")) P.check = atoi(x);
         else { fprintf(stderr, "Error\n"); return 1; }
+        if (a.rfind("--peep", 0) == 0) setPeep = true;
         if (a.rfind("--seglen", 0) == 0 || a.rfind("--nlis", 0) == 0 || a.rfind("--bw", 0) == 0) setLarge = true;
     }
     std::vector<long long> vals;
@@ -346,7 +350,8 @@ int main(int argc, char **argv) {
         print_ops(chunk_construct(a0, K, std::max(2, n / 80), 0)); return 0;
     }
     if (P.time < 0) P.time = n <= 150 ? 10.0 : (n <= 300 ? 20.0 : 40.0);
-    if (n > 300 && !setLarge) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 3; P.ktop = 1; P.bw = 100; P.bws = 0; }
+    if (n > 300 && !setLarge) { P.seglen = 16; P.rmax = 9; P.vwin = 9; P.nlis = 30; P.ktop = 3; P.bw = 100; P.bws = 0; }
+    if (!setPeep) P.peepK = n <= 150 ? std::vector<int>{4, 6, 8} : std::vector<int>{4, 6};
     double t0g = now_sec();
     Rng rng(P.seed * 0x9E3779B97F4A7C15ull + 12345);
     int m = P.chunks > 0 ? P.chunks : (n <= 150 ? 2 : (n <= 300 ? 4 : 6));
@@ -390,6 +395,9 @@ int main(int argc, char **argv) {
         if (gc < full_cost(rep)) rep = g;
     }
     double t0 = now_sec();
+    // budget: total --time covers init + IG + peephole (reserve for peephole)
+    P.time = std::max(0.5, P.time - (t0 - t0g) - (n <= 150 ? 2.0 : 4.0));
+    ig.P.time = P.time;
     if (P.restarts > 1 && P.iters < 0) {
         // racing: R independent runs for frac*T, then continue the best for the rest
         double slice = P.time * P.rfrac / P.restarts;
@@ -415,6 +423,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "internal: emit mismatch %zu vs %d\n", ops.size(), ig.bestCost);
         ops = base;
     }
+    int psaved = 0;
+    for (int K : P.peepK) { if (K >= 2) psaved += peep::optimize(a0, ops, K); }
+    if (!verify_ops(a0, ops)) { fprintf(stderr, "internal: peephole broke solution\n"); ops = emit(ig.best); }
+    if (P.verbose) fprintf(stderr, "peephole saved %d\n", psaved);
     if (P.verbose)
         fprintf(stderr, "n=%d lis=%d constructor=%zu final=%zu time=%.2f iters=%lld acc=%lld impr=%lld mis=%lld a2a=%d\n", n, lis_len,
                 base.size(), ops.size(), now_sec() - t0, ig.iters, ig.accepted, ig.improved, ig.nMis,

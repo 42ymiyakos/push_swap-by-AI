@@ -706,8 +706,6 @@ static int pick_destroy(IG *g, const Rep *r) {
     return nD;
 }
 
-static int has_a2a(const Rep *r) { for (int k = 0; k < r->nq; k++) if (r->q[k].t == 2) return 1; return 0; }
-
 static IG *g_ig;
 static int cmp_ord(const void *x, const void *y) {
     int a = *(const int *)x, b = *(const int *)y;
@@ -749,19 +747,12 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
             if (qd) { rep_remove_queries(&w, v); w.inK[v] = 1; w.isA2A[v] = 0; w.tk[v] = w.ik[v]; w.ph[v] = 1; }
             else remove_value(&w, v);
         }
-        /* c must equal full_cost(&w) after every step. The DP delta is exact when the solution holds no A2A
-         * query before and after the reinsertion; otherwise the exact cost is recomputed. */
-        int c = full_cost(&w), cvalid = 1;
+        int c = full_cost(&w);
         for (int z = 0; z < nD; z++) {
             int v = g.D[g.ord[z]];
-            if (qd) {
-                w.ph[v] = 0; remove_value(&w, v);
-                if (P->a2a && has_a2a(&w)) cvalid = 0; else { c = full_cost(&w); cvalid = 1; }
-            }
-            int pre_a2a = P->a2a && has_a2a(&w);
-            int d = reinsert(&g, &w, v);
-            if (P->a2a && (!cvalid || pre_a2a || has_a2a(&w))) { c = full_cost(&w); cvalid = 1; }
-            else c += d;
+            if (qd) { w.ph[v] = 0; remove_value(&w, v); c = full_cost(&w); }
+            c += reinsert(&g, &w, v);
+            if (P->a2a) c = full_cost(&w);  /* DP is approximate around A2A queries: use the exact cost */
         }
         int h = hist[it % hl];
         if (c <= curCost || c <= h) {

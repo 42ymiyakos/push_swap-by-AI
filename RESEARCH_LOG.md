@@ -106,3 +106,5 @@
     6 s vs 15 s at N=100: 361.9 vs 356.4, and the best of 2 seeds × 6 s is 359.3 → multi-start rejected; time (speed) matters at N=100 too.
 49. v9 (C, identical output): per-slot prep arrays cached (no recomputation for the top-3 in tmode 1); exact fast modulo; comb_cost
     fast path when there are no pending A2A rotations. About 12% faster at N=100.
+50. v9 vs v8 (dev): N=500 −4.3 (22 W / 0 L), N=100 −0.35 (6 W / 1 L) → main.
+    FAILED: skipping the exact re-decode when no A2A query is present: solutions almost always contain A2A queries → no gain; reverted.

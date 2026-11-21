@@ -78,3 +78,11 @@
 37. FAILED: IS+swap initial solutions (LIS with swappable consecutive pairs; DP + Fenwick; sa applied when a pair reaches
     the top; converter maps sa to an A2A query). Kept values 43 → 53 at N=500, but mean init only −15 (8 cases) and
     final +7.4 (16 cases, p = 0.41). Option --isswap=1 kept in C++ (default off), not ported to C.
+38. Coarse slot sweep (every k-th slot + exact refine of neighbours): IG at most 16% faster, quality equal → option only.
+39. Peephole K=8 at N=500 saves 13 more ops but costs ~10 s; at equal total time it was +45 worse (16/16 losses):
+    IG time at N=500 is worth about 5 ops/s in the 30–40 s regime.
+40. Wall-time profile (C): two exact DP solves per reinsertion ≈ 50% of IG time (callgrind Ir suggested 20%).
+    Shared prep (query pass, per-target arrays, keep/A2A options computed once; slot ranks from the query list in O(Q))
+    → identical output, ~10% faster. Peephole reserve 2/4 s → 0.8/1.0 s (measured 0.4–0.5 s).
+    v6 vs v5 (dev, time-limited): N=500 −24.7 (16/16 wins, p < 0.001), N=100 −1.1 (11 W / 1 L, p = 0.002).
+41. FAILED: three-pass (vectorizable) sweep with snapshot pruning: not faster (19.5 → 20.1 s / 300 iterations).

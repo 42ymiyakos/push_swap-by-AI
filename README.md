@@ -1,0 +1,53 @@
+# push_swap-by-AI
+
+An autonomous research project to build the strongest possible push_swap solver: as few
+operations as possible, always correct.
+
+## Results (held-out inputs `research/data/sets/eval2_*`, median operation count)
+
+| N | This repository (C version) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
+|---:|---:|---:|---:|
+| 100 | 375 (about 9 s) | 366.5 (about 16 s) | 608 |
+| 500 | 3029.5 (about 37 s) | 2980 (about 45 s) | 5349 |
+
+- n ≤ 8 is solved optimally by exhaustive search (n=3: at most 2 ops, n=5: at most 8 ops).
+- The median still trails the reference slightly. At N=500 this solver wins about 40% of cases, with a large spread.
+- Full figures, conditions and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
+
+## Quick start (C version)
+
+```sh
+cd research/c && make
+./push_swap 3 2 1
+./push_swap --time=5 $(python3 ../tools/gen.py --n 100 --seed 1)
+```
+
+Default time limit: 10 s for n ≤ 150, 20 s for n ≤ 300, 40 s above that. `--iters=N --seed=S` gives a
+deterministic run. Invalid input prints `Error`. This is not a norminette-compliant 42 submission.
+
+## Algorithm summary
+
+1. **Representation**: a solution is not stored as the command list itself. It is stored as which values stay
+   in A (K), the order in which each value moves (query list), and its cyclic position inside each stack
+   (AOrder/BOrder keys). Any such combination always decodes to a correct sort.
+2. **Initial solution**: LIS candidates from many start positions, chunked A→B, then beam search for B→A
+   (with an arc-cover estimate of the remaining rotations).
+3. **Iterated Greedy**: remove a few values, then reinsert each one at the jointly optimal choice of
+   "when it goes to B, when it comes back, and where it sits in B and in A". The cost difference of each
+   candidate is computed exactly, which turns the choice into an O(Q) DP. All B slots are evaluated at once
+   with a time-major sweep plus lower-bound pruning.
+4. **Post-processing**: replace short windows by shorter equivalent sequences found with meet-in-the-middle
+   BFS (peephole).
+
+Details: [ALGORITHM_NOTES.md](ALGORITHM_NOTES.md)
+
+## Layout
+
+| Path | Contents |
+|---|---|
+| `research/c/` | C implementation (main deliverable) |
+| `research/src/` | C++ research version (psig = same algorithm plus experimental options, qsa = simulated annealing prototype) |
+| `research/tools/` | Strict checker, input generator, op-sequence analyzer, C/C++ equivalence check |
+| `research/bench/` | Benchmark harness and all measurement results |
+| `research/data/sets/` | Benchmark inputs (development / held-out sets kept separate) |
+| `*.md` (root) | Research documents: plan, log, experiments, algorithm notes, results, next steps, resource usage |

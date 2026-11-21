@@ -1,15 +1,16 @@
 # NEXT STEPS (updated 2026-11-21, after v6)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v6 (C)** in `research/c/` (commit `17c62ae`, results committed in `dcb8528`). Same algorithm as the C++
-  research version `research/src/psig.cpp`. With `--iters=N` the two are byte-identical: check with
-  `research/tools/cmp_c_cpp.sh SET NCASES ITERS` after **every** change to either version.
-- Held-out results (eval3 + eval4, 60 cases per size; reference CSVs already exist: `eval3_ref_*`, `eval4_ref_*`):
-  - N=500: 2907 median / 2921 mean vs reference 2967.5 / 2967.5 → mean −46.5, p < 0.0001.
-  - N=100: 362.5 / 361.8 vs 363.5 / 363.9 → mean −2.1, p = 0.21 (not significant).
-- Default time budget: 15 s for n ≤ 150, 25 s for n ≤ 300, 40 s otherwise. Peephole reserve 0.8 / 1.0 s.
-- Machine: 4 vCPU only (cannot be increased). Run at most 4 solver processes at a time, and nothing heavy while a
-  time-limited benchmark is running, since timing affects results.
+- **Best solver: PSIG v13 (C)** in `research/c/` (commit `b9142b0`). Same algorithm as the C++ research version
+  `research/src/psig.cpp`. With `--iters=N` the two are byte-identical: check with
+  `research/tools/cmp_c_cpp.sh SET NCASES ITERS` after **every** change to either version. (C-only speed-ups must keep identical output.)
+- Held-out results (eval3 + eval4, 60 cases per size; reference CSVs `eval3_ref_*`, `eval4_ref_*` exist):
+  - N=100: 356.5 median / 357.7 mean vs 363.5 / 363.9 → −6.18, p = 0.0003 (48 W / 2 T / 10 L).
+  - N=500: 2849.5 / 2876.0 vs 2967.5 / 2967.5 → −91.5, p < 0.0001 (49 W / 11 L).
+- Defaults: 15 s (n ≤ 150), 25 s (n ≤ 300), 40 s otherwise; irot 16; ubw 1; final beam 1000 / 500; kick 200 (×2); A2A on.
+- Machine: 4 vCPU only. At most 4 solver processes; nothing heavy while a time-limited benchmark runs.
+- Dev sets: `dev40_u100` (`--limit 40`), `dev40_u500` (`--offset 12 --limit 28`), `dev60_u500` (60 cases) for N=500 decisions.
+  N=500 time-limited means vary about ±5 run to run over 28 cases; N=100 results are nearly deterministic.
 
 ## Key facts learned (do not re-derive)
 1. N=500 final ≈ initial − ~410. The initial solution quality drives the result and its variance.
@@ -26,7 +27,12 @@
 - Confirm on eval3 + eval4 (60 cases) only for candidates that win on dev. Do not tune on eval sets. eval/eval2 are
   already contaminated (looked at): do not use them for claims.
 
-## Prioritized next actions
+## Prioritized next actions (after v13)
+- Remaining weakness: N=500 spread (sd 75 vs 34) driven by the initial solution; worst cases ~3060.
+- More C speed (identical output): sweep near-x loop, solve_prep, per-reinsertion candidate building (build_bl/al qsort).
+- More diversity at N=100 (kick helped: −1.7 on dev): other perturbation types, adaptive kick strength.
+
+## Older list
 1. **N=500 variance / worst cases**: add more structurally different initial-solution families to the candidate pool
    (e.g. different round orders for the chunk A→B pass, top-only rounds, three chunks per pass, different K choices).
    Measure the mean and the *max* of the initial solution on dev first, then the final result.

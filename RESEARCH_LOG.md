@@ -95,3 +95,7 @@
     result 21% faster, irot=16 is 30% faster with similar quality, and irot=8 is worse. Dev test pending.
 45. irot dev results (time-limited, vs irot unlimited): N=100 no effect; N=500 irot=16 −10.75 (16 cases) and −5.4 (12 more),
     combined −8.5 (17 W / 11 L, p = 0.10); irot=12 −9.4 on the second slice. Adopted irot=16 as default (v7).
+46. v8 (C only, identical output to C++): far A2B times (82% of times at N=500) are skipped as a whole when a lower bound
+    on min_s(prefix-min + middle-effect sum) proves that no slot passes the B2A test; the middle-effect and rank updates are
+    deferred as range adds (difference arrays) and materialized only when needed. 300 iterations: 15.5 → 13.5 s.
+    Dev N=500 (28 cases): −13.6, 28 W / 0 L.

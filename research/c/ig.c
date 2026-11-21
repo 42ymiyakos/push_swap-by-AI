@@ -27,6 +27,7 @@ typedef struct {
     int nb, nt, W;  /* W = Q+1 row stride, Wt = Q+2 */
     int tmode, t0, topb, ubInit;
     int *tb; int tbcap;
+    int *Dg, *Dr; int dcap;  /* deferred range-add buffers for swG / swR */
     int allowA2A, a2aMax, irot;
 } RI;
 
@@ -328,6 +329,16 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
     int *swR = R->swR, *swG = R->swG, *swPm = R->swPm, *swPmi = R->swPmi, *slotBest = R->slotBest, *slotI = R->slotI, *slotJ = R->slotJ;
     for (int s = 0; s < m; s++) { swR[s] = 0; swG[s] = 0; swPm[s] = INT_MAX; swPmi[s] = -1; slotBest[s] = INT_MAX; slotI[s] = -1; slotJ[s] = -1; }
     int bestSoFar = R->ubInit;
+    if (R->dcap < m + 1) { R->dcap = 2 * (m + 1); R->Dg = xrealloc(R->Dg, sizeof(int) * R->dcap); R->Dr = xrealloc(R->Dr, sizeof(int) * R->dcap); }
+    int *Dg = R->Dg, *Dr = R->Dr, pendG = 0, pendR = 0;
+    for (int s = 0; s <= m; s++) { Dg[s] = 0; Dr[s] = 0; }
+    /* lbMin <= min over slots with a prefix of (swPm + swG); NOPREF when no slot has a prefix yet */
+    const int NOPREF = INT_MAX / 4;
+    int lbMin = NOPREF;
+#define MATERIALIZE() do { \
+        if (pendG) { int acc = 0; for (int s_ = 0; s_ < m; s_++) { acc += Dg[s_]; Dg[s_] = 0; swG[s_] += acc; } Dg[m] = 0; pendG = 0; } \
+        if (pendR) { int acc = 0; for (int s_ = 0; s_ < m; s_++) { acc += Dr[s_]; Dr[s_] = 0; swR[s_] += acc; } Dr[m] = 0; pendR = 0; } \
+    } while (0)
     for (int x = 0; x <= Q; x++) {
         int sa = x < Q ? R->qi[x].sa : R->finSa, sb = x < Q ? R->qi[x].sb : 0;
         int sa1 = sa + 1;
@@ -339,6 +350,7 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
         /* A2B(v) at a time where A's top is far from v is not considered (irot >= 0) */
         int farA = R->irot >= 0 && imin(fa1, sa1 - fa1) > R->irot;
         if (x == Q) {
+            MATERIALIZE();
             int c2 = 1 + comb_cost(F2[Q], R->finSa, 0, 1, NULL);
             for (int s = 0; s < m; s++) {
                 int c1 = 1 + comb_cost(fa1, sa1, 0, 0, NULL);
@@ -373,6 +385,31 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
         int lbC2 = 1 + (sa ? imin(F2[x], sa - F2[x]) : 0) - (f->pr + f->prr);
         if (lbC2 < 1) lbC2 = 1;
         int lbTail = lbS2 + base;
+        {   /* rank update of this query (deferred) */
+            int dr = f->t == 0 ? 1 : (f->t == 1 ? -1 : 0);
+            if (dr && pU >= 0 && pU < m) { Dr[pU] += dr; Dr[m] -= dr; pendR = 1; }
+        }
+        if (farA && (lbMin >= NOPREF || lbMin + lbC2 + lbTail >= bestSoFar)) {
+            /* provably no slot passes the B2A test at this x and A2B(v) is not allowed here:
+             * only the middle-effect prefix sums change; defer them as range adds */
+            int lo = imin(pA, pU), hi = imax(pA, pU);
+            lo = lo < 0 ? 0 : (lo > m ? m : lo);
+            hi = hi < 0 ? 0 : (hi > m ? m : hi);
+            int eLo = ev[1][1], eMid = pA > pU ? ev[1][0] : ev[0][1], eHi = ev[0][0];
+            int emin = INT_MAX;
+            if (lo > 0) { Dg[0] += eLo; Dg[lo] -= eLo; emin = imin(emin, eLo); }
+            if (hi > lo) { Dg[lo] += eMid; Dg[hi] -= eMid; emin = imin(emin, eMid); }
+            if (m > hi) { Dg[hi] += eHi; Dg[m] -= eHi; emin = imin(emin, eHi); }
+            pendG = 1;
+            if (lbMin < NOPREF && emin != INT_MAX) lbMin += emin;
+            continue;
+        }
+        /* the rank update of this x must not be visible yet: undo its deferral, materialize, redo after */
+        {
+            int dr = f->t == 0 ? 1 : (f->t == 1 ? -1 : 0);
+            if (dr && pU >= 0 && pU < m) { Dr[pU] -= dr; Dr[m] += dr; }
+        }
+        MATERIALIZE();
         /* c1 (needed for every slot) depends only on the slot's rank R in B: tabulate it (O(sb) <= O(m)) */
         int nR = sb + 1;
         if (R->tbcap < nR + 1) { R->tbcap = 2 * (nR + 1); R->tb = xrealloc(R->tb, sizeof(int) * R->tbcap); }
@@ -440,8 +477,12 @@ static void sweep(RI *R, const Rep *r, int v, int m, const int *posOf, int ti0, 
             }
             swG[s] += e;
         }
-        if (f->t == 0) { for (int s = pU; s < m; s++) swR[s]++; }
-        else if (f->t == 1) { for (int s = pU; s < m; s++) swR[s]--; }
+        {
+            int dr = f->t == 0 ? 1 : (f->t == 1 ? -1 : 0);
+            if (dr && pU >= 0 && pU < m) { Dr[pU] += dr; Dr[m] -= dr; pendR = 1; }
+        }
+        lbMin = NOPREF;
+        for (int s = 0; s < m; s++) if (swPmi[s] >= 0) { int t = swPm[s] + swG[s]; if (t < lbMin) lbMin = t; }
     }
 }
 
@@ -707,5 +748,5 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     RI *R = &g.R;
     free(R->qi); free(R->rkI); free(R->P); free(R->G); free(R->Aarr); free(R->bFbC2); free(R->bFbS2); free(R->bC1ii);
     free(R->rb); free(R->rt); free(R->tSUF); free(R->tF2); free(R->tFS); free(R->tFC); free(R->tFinA); free(R->tFinB);
-    free(R->tb); free(R->swR); free(R->swG); free(R->swPm); free(R->swPmi); free(R->slotBest); free(R->slotI); free(R->slotJ);
+    free(R->Dg); free(R->Dr); free(R->tb); free(R->swR); free(R->swG); free(R->swPm); free(R->swPmi); free(R->slotBest); free(R->slotI); free(R->slotJ);
 }

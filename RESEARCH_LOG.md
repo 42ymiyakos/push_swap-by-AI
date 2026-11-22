@@ -138,3 +138,8 @@
 70. Equal-input comparison with the reference deep mode (~8 h/case) on its 50+50 deep inputs (`deep_u*`), v17 at several budgets:
     N=100 15 s +8.18, 60 s +3.40, 300 s −1.24 (27 W / 2 T / 21 L, p .40) → level at 300 s. N=500 45 s +153, 180 s +102.6,
     600 s +69.7 (1 W / 1 T / 48 L). Gain per doubling ≈ 25 → 19 at N=500: long-run search stagnates → next: long-budget IG (acceptance, destroy-size schedule, restarts from the elite).
+71. dualig conversions fail often (N=500, 45 s: 20 of 28 switches; one case never switched). Causes: a value moved by an
+    A2A sa is pushed later (most), or sa of two already placed values. `--convfix=1` drops the A2A query / swaps the two
+    placed entries (converted reps verified by emit); then all switches succeed. Also: the best is kept across phases.
+    Effect: dev60 45 s −6.0 vs old v17 run, but a fresh v17 rerun is itself −7.8 (run noise ≈ ±8) → +1.8 (p .52);
+    40 cases at 180 s: +0.1 (p .98). → no effect; option kept, default off. dualig=32 at 180 s: +15.0 (10 W / 30 L) → worse.

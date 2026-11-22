@@ -109,7 +109,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, -1};
-    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 1, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 8, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);

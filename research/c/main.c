@@ -32,7 +32,9 @@ static int cmp_sc(const void *a, const void *b) {
     return (x->k > y->k) - (x->k < y->k);
 }
 
-typedef struct { int nlis, ktop, bw, bws, bc, kper, bwm, nm; int mlist4[5]; int verbose, kdir, isswap, swratio; } InitCfg;
+typedef struct { int nlis, ktop, bw, bws, bc, kper, bwm, nm; int mlist4[5]; int verbose, kdir, isswap, swratio, force; } InitCfg;
+#define MAXCAND 16
+static OpVec g_cand[MAXCAND]; static int g_ncand = 0;  /* all full-beam start solutions (for probing) */
 static const int invop[NOPS] = {SA, SB, SS, PB, PA, RRA, RRB, RRR, RA, RB, RR};
 /* ndir = 2: also solve the inverse permutation; its reversed, inverted op sequence sorts a0 */
 /* ndir = 2: also solve the inverse permutation; its reversed, inverted op sequence sorts a0.
@@ -101,7 +103,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
         st2[y + 1] = e; st2m[y + 1] = em;
     }
     int haveBase = 0, bestV = 0, bestK = 0;
-    int taken[4] = {0, 0, 0, 0}, done = 0, ngroups = 0;
+    int taken[4] = {0, 0, 0, 0}, done = 0, ngroups = 0, nfull = 0;
     for (int vd = 0; vd < nv; vd++) ngroups += nK[vd] > 0;
     for (int k = 0; k < n2 && done < ktop; k++) {
         int vd = st2m[k] / 10000, dir = vd % ndir;
@@ -120,7 +122,10 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
             ov_copy(&tmp, &r); ov_free(&r);
         }
         if (C->verbose) fprintf(stderr, "full group=%d stage2=%d full=%d t=%.2f\n", vd, st2[k].size, tmp.n, now_sec() - tb0);
-        if (!haveBase || tmp.n < base->n) { ov_copy(base, &tmp); haveBase = 1; bestV = vd; bestK = st2[k].k; }
+        if (g_ncand < MAXCAND) { ov_init(&g_cand[g_ncand]); ov_copy(&g_cand[g_ncand], &tmp); g_ncand++; }
+        if (C->force >= 0 ? nfull == C->force : (!haveBase || tmp.n < base->n)) { ov_copy(base, &tmp); haveBase = 1; bestV = vd; bestK = st2[k].k; }
+        if (!haveBase) { ov_copy(base, &tmp); haveBase = 1; bestV = vd; bestK = st2[k].k; }
+        nfull++;
     }
     if (C->verbose) fprintf(stderr, "init group=%d\n", bestV);
     g_pair = NULL;
@@ -135,7 +140,8 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, -1};
-    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 8, isswapOpt = 1, swrOpt = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 8, isswapOpt = 1, swrOpt = 0, forceOpt = -1, probe = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    double probet = 2.0;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -152,6 +158,9 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
         else if (!strncmp(a, "--nlis=", 7)) nlisOpt = atoi(a + 7);
         else if (!strncmp(a, "--dualig=", 9)) dualig = atoi(a + 9);
+        else if (!strncmp(a, "--probe=", 8)) probe = atoi(a + 8);
+        else if (!strncmp(a, "--probet=", 9)) probet = atof(a + 9);
+        else if (!strncmp(a, "--forceinit=", 12)) forceOpt = atoi(a + 12);
         else if (!strncmp(a, "--swratio=", 10)) swrOpt = atoi(a + 10);
         else if (!strncmp(a, "--isswap=", 9)) isswapOpt = atoi(a + 9);
         else if (!strncmp(a, "--kdir=", 7)) kdirOpt = atoi(a + 7);
@@ -206,14 +215,14 @@ int main(int argc, char **argv) {
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;
     double t0g = now_sec();
 
-    InitCfg C = {nlis, ktop, bw, bws, bc, kper, bwm, nm, {0}, 0, 0, 0, 16};
+    InitCfg C = {nlis, ktop, bw, bws, bc, kper, bwm, nm, {0}, 0, 0, 0, 16, -1};
     memcpy(C.mlist4, mlist4, sizeof C.mlist4);
     OpVec base; ov_init(&base);
     int lis_len = 0;
     /* dual (inverse-permutation) initial solutions, ktop full beams per direction: on by default */
     if (P.dual < 0) P.dual = 1;
     if (kdirOpt < 0) kdirOpt = P.dual ? ktop : 0;
-    C.verbose = P.verbose; C.kdir = kdirOpt; C.isswap = isswapOpt; if (swrOpt > 0) C.swratio = swrOpt;
+    C.verbose = P.verbose; C.kdir = kdirOpt; C.isswap = isswapOpt; C.force = forceOpt; if (swrOpt > 0) C.swratio = swrOpt;
     build_init(a0, n, &C, P.dual ? 2 : 1, &base, &lis_len);
     Rep rep; memset(&rep, 0, sizeof rep);
     g_convSA = 1;  /* the base may contain SA (IS+swap starts) */
@@ -230,6 +239,32 @@ int main(int argc, char **argv) {
     if (P.time < 0.5) P.time = 0.5;
     Rep best; memset(&best, 0, sizeof best);
     int bestCost; long long iters;
+    if (probe > 1 && g_ncand > 1) {
+        /* short IG probe on the best few start solutions; continue from the probe that got furthest */
+        int ord[MAXCAND];
+        for (int i = 0; i < g_ncand; i++) ord[i] = i;
+        for (int i = 1; i < g_ncand; i++) { int e = ord[i], j = i - 1; while (j >= 0 && g_cand[ord[j]].n > g_cand[e].n) { ord[j + 1] = ord[j]; j--; } ord[j + 1] = e; }
+        int np = imin(probe, g_ncand), bestP = INT_MAX;
+        double tps = now_sec();
+        Rep pr; memset(&pr, 0, sizeof pr);
+        for (int q = 0; q < np; q++) {
+            Rep cr; memset(&cr, 0, sizeof cr);
+            g_convSA = 1;
+            int ok = convert(a0, n, &g_cand[ord[q]], &cr);
+            g_convSA = 0;
+            if (!ok) { rep_free(&cr); continue; }
+            Params Pq = P; Pq.time = probet;
+            int c; long long it;
+            ig_run(&cr, &Pq, &rng, &pr, &c, &it);
+            if (P.verbose) fprintf(stderr, "probe %d: start %d -> %d\n", q, g_cand[ord[q]].n, c);
+            if (c < bestP) { bestP = c; rep_copy(&rep, &pr); }
+            rep_free(&cr);
+        }
+        rep_free(&pr);
+        P.time -= now_sec() - tps;
+        if (P.time < 0.5) P.time = 0.5;
+    }
+    for (int i = 0; i < g_ncand; i++) ov_free(&g_cand[i]);
     if (dualig <= 1) {
         ig_run(&rep, &P, &rng, &best, &bestCost, &iters);
         emit(&best, &ops);

@@ -32,6 +32,8 @@
   already contaminated (looked at): do not use them for claims.
 
 ## Prioritized next actions (after v17, agreed with the user)
+0. Done (log 68–69): weak-pattern study → losses are mostly reference luck; real outliers come from the start
+   choice (probing fixes them but is neutral on average). Rare ops: zero local potential (K=10 exact windows).
 1. **Weak-pattern study** (data first): features of held-out cases where we lose to the reference or score badly
    (LIS length, initial-solution quality, local structure); form a hypothesis, generate inputs that amplify it
    (as with es); optionally an adversarial input search with a short-time proxy.

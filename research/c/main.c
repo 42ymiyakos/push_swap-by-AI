@@ -2,6 +2,13 @@
 #include "ps.h"
 
 static int g_convSlack = 1000000;
+/* a converted representation is used only if it emits a valid sequence of the computed cost */
+static int conv_ok(const int *a, int n, const Rep *r, int fc) {
+    if (!g_convFix) return 1;
+    OpVec o; ov_init(&o); emit(r, &o);
+    int ok = o.n == fc && verify_ops(a, n, &o);
+    ov_free(&o); return ok;
+}
 static int parse_args(int argc, char **argv, int first, ll **out, int *nout) {
     int cap = 16, n = 0;
     ll *v = xmalloc(sizeof(ll) * cap);
@@ -302,7 +309,7 @@ int main(int argc, char **argv) {
             Rep nr; memset(&nr, 0, sizeof nr);
             const int *other = dir ? a0 : inv;
             int fc = -1;
-            if (verify_ops(other, n, &r2) && convert(other, n, &r2, &nr) && (fc = full_cost(&nr)) <= cur.n + g_convSlack) {
+            if (verify_ops(other, n, &r2) && convert(other, n, &r2, &nr) && (fc = full_cost(&nr)) <= cur.n + g_convSlack && conv_ok(other, n, &nr, fc)) {
                 if (P.verbose) fprintf(stderr, "  convert ok: %d -> %d (fixed %d)\n", cur.n, fc, g_convFixed);
                 rep_free(&rep); rep = nr; dir ^= 1;
             } else {

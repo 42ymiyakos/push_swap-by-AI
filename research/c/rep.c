@@ -1,3 +1,4 @@
+#include <stdlib.h>
 /* Representation: K set, query list, AOrder (ik, tk) and BOrder (bk) keys; decoder, emitter, converter.
  * Stacks are kept cyclically sorted by key. Encoded entry = key*1024 + value. */
 #include "ps.h"
@@ -207,7 +208,12 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
             if (A[ta].target || trip[x]) {
                 /* the second value y jumps to the top instead (A2A backwards) */
                 int y = A[ny].v;
-                if (A[ny].target || trip[y]) { ok = 0; break; }
+                if (A[ny].target || trip[y]) {
+                    if (g_convFix && A[ta].target && A[ny].target) {  /* two placed values: swap their places */
+                        int t = A[ta].v; A[ta].v = A[ny].v; A[ny].v = t; g_convFixed++; continue;
+                    }
+                    ok = 0; break;
+                }
                 trip[y] = 1; r->inK[y] = 0; r->isA2A[y] = 1; r->q[r->nq].v = (int16_t)y; r->q[r->nq].t = 2; r->nq++;
                 A[ny].live = 0;
                 GE e = {y, 1, 1}; ge_insert(A, &mA, ta, e);

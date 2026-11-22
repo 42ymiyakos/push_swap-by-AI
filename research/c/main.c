@@ -45,6 +45,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
     SC *st2 = xmalloc(sizeof(SC) * (2 * ndir * nm * kper + 1));
     int *st2m = xmalloc(sizeof(int) * (2 * ndir * nm * kper + 1)), n2 = 0;
     OpVec tmp; ov_init(&tmp);
+    double tb0 = now_sec();
     for (int dir = 0; dir < ndir; dir++) {
         const int *a = arr[dir];
         /* candidate K sets: LIS from many starts (distinct), screened with a small beam */
@@ -70,6 +71,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
             }
         }
         free(sc);
+        if (C->verbose) fprintf(stderr, "dir %d screened t=%.2f\n", dir, now_sec() - tb0);
     }
     /* sort (size, k, m) */
     for (int x = 1; x < n2; x++) {
@@ -92,6 +94,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
             for (int i = tmp.n - 1; i >= 0; i--) ov_push(&r, invop[tmp.d[i]]);
             ov_copy(&tmp, &r); ov_free(&r);
         }
+        if (C->verbose) fprintf(stderr, "full dir=%d stage2=%d full=%d t=%.2f\n", dir, st2[k].size, tmp.n, now_sec() - tb0);
         if (!haveBase || tmp.n < base->n) { ov_copy(base, &tmp); haveBase = 1; bestDir = dir; bestK = st2[k].k; }
     }
     if (C->verbose) fprintf(stderr, "init dir=%d\n", bestDir);

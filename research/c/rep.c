@@ -201,6 +201,12 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
     memset(r->inK, 1, n); memset(r->present, 1, n);
     for (int k = 0; k < ops->n && ok; k++) {
         int o = ops->d[k];
+        if (g_convFix >= 2 && (o == SB || o == SS)) {  /* approximate: swap the top two B entries; ss then acts as sa */
+            if (liveB >= 2) { int nb = nextlive(B, mB, tb, 1); int t = B[tb].v; B[tb].v = B[nb].v; B[nb].v = t; }
+            g_convFixed++;
+            if (o == SB) continue;
+            o = SA;
+        }
         if (o == SA && g_convSA) {  /* swap of two init-state values in A -> A2A query (top value jumps one step forward) */
             if (liveA < 2) continue;
             int x = A[ta].v;
@@ -212,7 +218,7 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
                     if (g_convFix && A[ta].target && A[ny].target) {  /* two placed values: swap their places */
                         int t = A[ta].v; A[ta].v = A[ny].v; A[ny].v = t; g_convFixed++; continue;
                     }
-                    ok = 0; break;
+                    ok = 0; fprintf(stderr,"FAILPT 1 k=%d\n", k); break;
                 }
                 trip[y] = 1; r->inK[y] = 0; r->isA2A[y] = 1; r->q[r->nq].v = (int16_t)y; r->q[r->nq].t = 2; r->nq++;
                 A[ny].live = 0;
@@ -226,13 +232,17 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
             ta = ny;
             continue;
         }
-        if (o == SA || o == SB || o == SS) { ok = 0; break; }
+        if (g_convFix >= 2 && o == SA) {  /* sa not mapped to A2A (convSA off or values placed): swap if both placed */
+            if (liveA >= 2) { int na2 = nextlive(A, mA, ta, 1); if (A[ta].target && A[na2].target) { int t = A[ta].v; A[ta].v = A[na2].v; A[na2].v = t; } }
+            g_convFixed++; continue;
+        }
+        if (o == SA || o == SB || o == SS) { ok = 0; fprintf(stderr,"FAILPT 2 k=%d\n", k); break; }
         if ((o == RA || o == RR) && liveA > 1) ta = nextlive(A, mA, ta, 1);
         if ((o == RRA || o == RRR) && liveA > 1) ta = nextlive(A, mA, ta, -1);
         if ((o == RB || o == RR) && liveB > 1) tb = nextlive(B, mB, tb, 1);
         if ((o == RRB || o == RRR) && liveB > 1) tb = nextlive(B, mB, tb, -1);
         if (o == PB) {
-            if (!liveA) { ok = 0; break; }
+            if (!liveA) { ok = 0; fprintf(stderr,"FAILPT 3 k=%d\n", k); break; }
             int v = A[ta].v;
             if (g_convFix && A[ta].target && r->isA2A[v]) {
                 /* a value moved by an earlier sa (A2A) is pushed later: drop its A2A query and treat it as an
@@ -241,7 +251,7 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
                 for (int q = 0; q < r->nq; q++) if (!(r->q[q].v == v && r->q[q].t == 2)) r->q[w++] = r->q[q];
                 r->nq = w; r->isA2A[v] = 0; A[ta].target = 0; A[ta].v = -1;
                 g_convFixed++;
-            } else if (A[ta].target || trip[v]) { ok = 0; break; }
+            } else if (A[ta].target || trip[v]) { ok = 0; fprintf(stderr,"FAILPT 4 k=%d\n", k); break; }
             trip[v] = 1; r->inK[v] = 0; r->q[r->nq].v = (int16_t)v; r->q[r->nq].t = 0; r->nq++;
             A[ta].live = 0; liveA--;
             if (liveA) ta = nextlive(A, mA, ta, 1);
@@ -249,7 +259,7 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
             GE e = {v, 1, 0}; ge_insert(B, &mB, pos, e); tb = pos; liveB++;
         }
         if (o == PA) {
-            if (!liveB) { ok = 0; break; }
+            if (!liveB) { ok = 0; fprintf(stderr,"FAILPT 5 k=%d\n", k); break; }
             int v = B[tb].v; B[tb].live = 0; liveB--;
             r->q[r->nq].v = (int16_t)v; r->q[r->nq].t = 1; r->nq++;
             if (liveB) tb = nextlive(B, mB, tb, 1);

@@ -2,6 +2,7 @@
 #include "ps.h"
 
 static int g_convSlack = 1000000;
+static const char *g_evalops = NULL;
 /* a converted representation is used only if it emits a valid sequence of the computed cost */
 static int conv_ok(const int *a, int n, const Rep *r, int fc) {
     if (!g_convFix) return 1;
@@ -163,6 +164,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--dbias=", 8)) P.dbias = atoi(a + 8);
         else if (!strncmp(a, "--kick=", 7)) P.kick = atoi(a + 7);
         else if (!strncmp(a, "--lahc=", 7)) P.lahc = atoi(a + 7);
+        else if (!strncmp(a, "--evalops=", 10)) g_evalops = a + 10;
         else if (!strncmp(a, "--kickmul=", 10)) P.kickmul = atoi(a + 10);
         else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
         else if (!strncmp(a, "--nlis=", 7)) nlisOpt = atoi(a + 7);
@@ -204,6 +206,25 @@ int main(int argc, char **argv) {
     if (sorted) { free(a0); return 0; }
     OpVec ops; ov_init(&ops);
     if (n <= 8) { exact_solve(a0, n, &ops); print_ops(&ops); ov_free(&ops); free(a0); return 0; }
+    if (g_evalops) {  /* research: convert a given op sequence to the representation and report its cost */
+        FILE *f = fopen(g_evalops, "r"); char w[8];
+        while (f && fscanf(f, "%7s", w) == 1) for (int o = 0; o < NOPS; o++) if (!strcmp(w, OPNAME[o])) ov_push(&ops, o);
+        if (f) fclose(f);
+        Rep r; memset(&r, 0, sizeof r);
+        g_convSA = 1; if (!g_convFix) g_convFix = 2;
+        int ok = verify_ops(a0, n, &ops), cv = ok && convert(a0, n, &ops, &r);
+        int fc = cv ? full_cost(&r) : -1;
+        OpVec e; ov_init(&e); if (cv) emit(&r, &e);
+        int peep = 0; if (cv) { peep = peep_optimize(a0, n, &e, 6); }
+        printf("given %d valid %d converted %d cost %d fixed %d emit_ok %d after_peep %d\n", ops.n, ok, cv, fc, g_convFixed, cv && verify_ops(a0, n, &e), e.n);
+        if (cv && P.time > 0) {
+            Rng rg; rng_seed(&rg, P.seed + 99); Rep bst; memset(&bst, 0, sizeof bst); int bc; long long it;
+            if (P.kick < 0) P.kick = 200;
+            ig_run(&r, &P, &rg, &bst, &bc, &it);
+            printf("ig %.0fs -> %d (%lld iters)\n", P.time, bc, it);
+        }
+        return 0;
+    }
     if (n > 1000) {  /* values are encoded in 10 bits: constructive fallback */
         Rng rr; rng_seed(&rr, 1);
         char *K = xmalloc(n);

@@ -122,6 +122,8 @@ static inline int topv(const ll *s, int n, int t) { return n == 0 ? -1 : (int)(s
 
 /* ---------- construction ---------- */
 void lis_from(const int *a, int n, int s, char *mask);
+int isswap_from(const int *a, int n, int s, char *mask, int *pairOf);
+extern const int *g_pair;  /* chunk_construct: swap pairs from isswap_from (NULL = none) */
 void circular_lis(const int *a, int n, Rng *rng, char *mask);
 extern int g_cmode;
 void chunk_construct(const int *a0, int n, const char *inK, int m, int bw, int bc, OpVec *out);

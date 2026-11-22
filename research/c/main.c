@@ -32,7 +32,7 @@ static int cmp_sc(const void *a, const void *b) {
     return (x->k > y->k) - (x->k < y->k);
 }
 
-typedef struct { int nlis, ktop, bw, bws, bc, kper, bwm, nm; int mlist4[5]; int verbose; } InitCfg;
+typedef struct { int nlis, ktop, bw, bws, bc, kper, bwm, nm; int mlist4[5]; int verbose, kdir; } InitCfg;
 static const int invop[NOPS] = {SA, SB, SS, PB, PA, RRA, RRB, RRR, RA, RB, RR};
 /* ndir = 2: also solve the inverse permutation; its reversed, inverted op sequence sorts a0 */
 static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *base, int *lis_out) {
@@ -80,8 +80,11 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
         st2[y + 1] = e; st2m[y + 1] = em;
     }
     int haveBase = 0, bestDir = 0, bestK = 0;
-    for (int k = 0; k < imin(n2, ktop); k++) {
+    int taken[2] = {0, 0}, done = 0;
+    for (int k = 0; k < n2 && done < ktop; k++) {
         int dir = st2m[k] / 10000;
+        if (C->kdir > 0) { if (taken[dir] >= C->kdir) continue; taken[dir]++; done = (taken[0] >= C->kdir) + (taken[1] >= C->kdir) >= ndir ? ktop : 0; }
+        else done++;
         g_cmode = (st2m[k] / 1000) % 10;
         chunk_construct(arr[dir], n, Ks[dir][st2[k].k], st2m[k] % 1000, bw, bc, &tmp);
         if (dir) {
@@ -103,7 +106,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, 0};
-    int first = 1, seglenSet = 0, ktopOpt = -1, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -118,6 +121,8 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--kick=", 7)) P.kick = atoi(a + 7);
         else if (!strncmp(a, "--kickmul=", 10)) P.kickmul = atoi(a + 10);
         else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
+        else if (!strncmp(a, "--nlis=", 7)) nlisOpt = atoi(a + 7);
+        else if (!strncmp(a, "--kdir=", 7)) kdirOpt = atoi(a + 7);
         else if (!strncmp(a, "--ktop=", 7)) ktopOpt = atoi(a + 7);
         else if (!strncmp(a, "--bw=", 5)) bwOpt = atoi(a + 5);
         else if (!strncmp(a, "--bwm=", 6)) bwmOpt = atoi(a + 6);
@@ -163,16 +168,17 @@ int main(int argc, char **argv) {
     if (n > 300) { if (!seglenSet) P.seglen = 16; P.rmax = 9; P.vwin = 9; nlis = 30; ktop = 3; bw = 500; bws = 0; bwm = 20; int t[5] = {4, 6, 8, 10, 12}; memcpy(mlist4, t, sizeof t); nm = 5; }
     if (bwOpt > 0) bw = bwOpt;
     if (ktopOpt > 0) ktop = ktopOpt;
+    if (nlisOpt > 0) nlis = nlisOpt;
     if (bwmOpt > 0) bwm = bwmOpt;
     if (bwsOpt >= 0) bws = bwsOpt;
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;
     double t0g = now_sec();
 
-    InitCfg C = {nlis, ktop, bw, bws, bc, kper, bwm, nm, {0}, 0};
+    InitCfg C = {nlis, ktop, bw, bws, bc, kper, bwm, nm, {0}, 0, 0};
     memcpy(C.mlist4, mlist4, sizeof C.mlist4);
     OpVec base; ov_init(&base);
     int lis_len = 0;
-    C.verbose = P.verbose;
+    C.verbose = P.verbose; C.kdir = kdirOpt;
     build_init(a0, n, &C, P.dual ? 2 : 1, &base, &lis_len);
     Rep rep; memset(&rep, 0, sizeof rep);
     if (!verify_ops(a0, n, &base) || !convert(a0, n, &base, &rep)) {

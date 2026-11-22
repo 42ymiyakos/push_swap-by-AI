@@ -149,3 +149,9 @@
     output at default budgets). Held-out deep sets: N=500 180 s −0.84 (p .86, not confirmed); N=100 300 s −1.76 (p .10) vs v17,
     and −3.00 vs the reference deep mode (27 W / 1 T / 22 L, p .033). Kept as default since it is neutral-or-better; the dev
     gain at N=500 did not transfer (selection + run noise ≈ ±5 at 180 s on 40 cases).
+73. Distance to optimum at small n (tools/optbfs.c: exact distance of every state by BFS from the sorted state; n=10 has
+    39.9 M states, diameter 22, built in 70 s). 200 random inputs, v18 at 1 s: n=9 14.045 vs optimum 13.990 (+0.4%),
+    n=10 16.610 vs 16.495 (+0.7%). Wasted moves are spread over rra/pb/ra (no single pattern). → the representation
+    (each value pushed at most once, A2A via sa) is not the limit at small n; the N=500 gap is search.
+    Structure vs reference (normal mode, 4 dev cases): both push every value at most once; the reference keeps 40–46 values
+    in A (never pushed) vs our 25–33, and uses more sa/sb/ss (≈ 35 vs ≈ 12). Hypothesis: our IG under-explores larger kept sets.

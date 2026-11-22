@@ -162,6 +162,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--dbo=", 6)) P.dbo = atoi(a + 6);
         else if (!strncmp(a, "--dbias=", 8)) P.dbias = atoi(a + 8);
         else if (!strncmp(a, "--kick=", 7)) P.kick = atoi(a + 7);
+        else if (!strncmp(a, "--lahc=", 7)) P.lahc = atoi(a + 7);
         else if (!strncmp(a, "--kickmul=", 10)) P.kickmul = atoi(a + 10);
         else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
         else if (!strncmp(a, "--nlis=", 7)) nlisOpt = atoi(a + 7);

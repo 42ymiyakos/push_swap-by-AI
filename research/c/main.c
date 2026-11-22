@@ -32,54 +32,65 @@ static int cmp_sc(const void *a, const void *b) {
     return (x->k > y->k) - (x->k < y->k);
 }
 
-typedef struct { int nlis, ktop, bw, bws, bc, kper, bwm, nm; int mlist4[5]; int verbose, kdir, isswap; } InitCfg;
+typedef struct { int nlis, ktop, bw, bws, bc, kper, bwm, nm; int mlist4[5]; int verbose, kdir, isswap, swratio; } InitCfg;
 static const int invop[NOPS] = {SA, SB, SS, PB, PA, RRA, RRB, RRR, RA, RB, RR};
 /* ndir = 2: also solve the inverse permutation; its reversed, inverted op sequence sorts a0 */
+/* ndir = 2: also solve the inverse permutation; its reversed, inverted op sequence sorts a0.
+ * Candidate groups ("virtual directions"): plain LIS for each direction, and with isswap, IS+swap candidates
+ * for each direction whose best IS+swap length is >= swratio/10 x its LIS length (structured inputs such as
+ * descending blocks; random inputs never pass). Each group is screened separately and gets kdir full beams. */
 static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *base, int *lis_out) {
     int nlis = C->nlis, ktop = C->ktop, bw = C->bw, bws = C->bws, bc = C->bc, kper = C->kper, bwm = C->bwm, nm = C->nm;
     const int *mlist4 = C->mlist4;
     int *arr[2]; arr[0] = (int *)a0; arr[1] = NULL;
     if (ndir == 2) { arr[1] = xmalloc(sizeof(int) * n); for (int i = 0; i < n; i++) arr[1][a0[i]] = i; }
-    int starts = imin(n, nlis), nK[2] = {0, 0};
-    char **Ks[2] = {NULL, NULL};
-    int **Pr[2] = {NULL, NULL};  /* swap pairs per candidate (NULL = plain LIS) */
-    SC *st2 = xmalloc(sizeof(SC) * (2 * ndir * nm * kper + 1));
-    int *st2m = xmalloc(sizeof(int) * (2 * ndir * nm * kper + 1)), n2 = 0;
+    int nv = C->isswap ? 2 * ndir : ndir;
+    int starts = imin(n, nlis), nK[4] = {0, 0, 0, 0}, maxLis[2] = {0, 0};
+    char **Ks[4] = {NULL, NULL, NULL, NULL};
+    int **Pr[4] = {NULL, NULL, NULL, NULL};  /* swap pairs per candidate (NULL = plain LIS) */
+    SC *st2 = xmalloc(sizeof(SC) * (2 * nv * nm * kper + 1));
+    int *st2m = xmalloc(sizeof(int) * (2 * nv * nm * kper + 1)), n2 = 0;
     OpVec tmp; ov_init(&tmp);
     double tb0 = now_sec();
-    for (int dir = 0; dir < ndir; dir++) {
+    for (int vd = 0; vd < nv; vd++) {
+        int dir = vd % ndir, sw = vd >= ndir;
         const int *a = arr[dir];
-        /* candidate K sets: LIS from many starts (distinct), screened with a small beam */
-        Ks[dir] = xmalloc(sizeof(char *) * starts * 2); Pr[dir] = xcalloc(starts * 2, sizeof(int *));
-        for (int pass2 = 0; pass2 < (C->isswap ? 2 : 1); pass2++)
+        Ks[vd] = xmalloc(sizeof(char *) * starts); Pr[vd] = xcalloc(starts, sizeof(int *));
+        int maxSw = 0;
         for (int t = 0; t < starts; t++) {
             int st = (int)((long long)t * n / starts);
             char *K = xmalloc(n); int *pr = NULL;
-            if (pass2 == 0) lis_from(a, n, st, K);
+            if (!sw) { lis_from(a, n, st, K); int L = 0; for (int v = 0; v < n; v++) L += K[v]; if (L > maxLis[dir]) maxLis[dir] = L; }
             else {
                 pr = xmalloc(sizeof(int) * n);
-                isswap_from(a, n, st, K, pr);
+                int L = isswap_from(a, n, st, K, pr);
                 int any = 0; for (int v = 0; v < n; v++) if (pr[v] >= 0) { any = 1; break; }
                 if (!any) { free(K); free(pr); continue; }
+                if (L > maxSw) maxSw = L;
             }
             int dup = 0;
-            for (int k = 0; k < nK[dir]; k++) if (!memcmp(Ks[dir][k], K, n) && ((!pr && !Pr[dir][k]) || (pr && Pr[dir][k] && !memcmp(pr, Pr[dir][k], sizeof(int) * n)))) { dup = 1; break; }
-            if (dup) { free(K); free(pr); } else { Pr[dir][nK[dir]] = pr; Ks[dir][nK[dir]++] = K; }
+            for (int k = 0; k < nK[vd]; k++) if (!memcmp(Ks[vd][k], K, n) && (!pr || !memcmp(pr, Pr[vd][k], sizeof(int) * n))) { dup = 1; break; }
+            if (dup) { free(K); free(pr); } else { Pr[vd][nK[vd]] = pr; Ks[vd][nK[vd]++] = K; }
         }
+        if (sw && maxSw * 10 < maxLis[dir] * C->swratio) {  /* group not used for this input */
+            for (int k = 0; k < nK[vd]; k++) { free(Ks[vd][k]); free(Pr[vd][k]); }
+            nK[vd] = 0;
+        }
+        if (!nK[vd]) continue;
         /* stage 1: greedy screening per chunk count; stage 2: small beam (kper per count); stage 3: full beam */
-        SC *sc = xmalloc(sizeof(SC) * nK[dir]);
+        SC *sc = xmalloc(sizeof(SC) * nK[vd]);
         for (int cm = 0; cm < 2; cm++) for (int mi = 0; mi < nm; mi++) {
             int mm = mlist4[mi]; g_cmode = cm;
-            for (int k = 0; k < nK[dir]; k++) { g_pair = Pr[dir][k]; chunk_construct(a, n, Ks[dir][k], mm, bws, bc, &tmp); sc[k].size = tmp.n; sc[k].k = k; }
-            qsort(sc, nK[dir], sizeof(SC), cmp_sc);
-            for (int k = 0; k < imin(nK[dir], kper); k++) {
+            for (int k = 0; k < nK[vd]; k++) { g_pair = Pr[vd][k]; chunk_construct(a, n, Ks[vd][k], mm, bws, bc, &tmp); sc[k].size = tmp.n; sc[k].k = k; }
+            qsort(sc, nK[vd], sizeof(SC), cmp_sc);
+            for (int k = 0; k < imin(nK[vd], kper); k++) {
                 int sz = sc[k].size;
-                if (bwm > 0) { g_pair = Pr[dir][sc[k].k]; chunk_construct(a, n, Ks[dir][sc[k].k], mm, bwm, bc, &tmp); sz = tmp.n; }
-                st2[n2].size = sz; st2[n2].k = sc[k].k; st2m[n2] = mm + 1000 * cm + 10000 * dir; n2++;
+                if (bwm > 0) { g_pair = Pr[vd][sc[k].k]; chunk_construct(a, n, Ks[vd][sc[k].k], mm, bwm, bc, &tmp); sz = tmp.n; }
+                st2[n2].size = sz; st2[n2].k = sc[k].k; st2m[n2] = mm + 1000 * cm + 10000 * vd; n2++;
             }
         }
         free(sc);
-        if (C->verbose) fprintf(stderr, "dir %d screened t=%.2f\n", dir, now_sec() - tb0);
+        if (C->verbose) fprintf(stderr, "group %d (%d candidates) screened t=%.2f\n", vd, nK[vd], now_sec() - tb0);
     }
     /* sort (size, k, m) */
     for (int x = 1; x < n2; x++) {
@@ -89,29 +100,34 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
         }
         st2[y + 1] = e; st2m[y + 1] = em;
     }
-    int haveBase = 0, bestDir = 0, bestK = 0;
-    int taken[2] = {0, 0}, done = 0;
+    int haveBase = 0, bestV = 0, bestK = 0;
+    int taken[4] = {0, 0, 0, 0}, done = 0, ngroups = 0;
+    for (int vd = 0; vd < nv; vd++) ngroups += nK[vd] > 0;
     for (int k = 0; k < n2 && done < ktop; k++) {
-        int dir = st2m[k] / 10000;
-        if (C->kdir > 0) { if (taken[dir] >= C->kdir) continue; taken[dir]++; done = (taken[0] >= C->kdir) + (taken[1] >= C->kdir) >= ndir ? ktop : 0; }
-        else done++;
+        int vd = st2m[k] / 10000, dir = vd % ndir;
+        if (C->kdir > 0) {
+            if (taken[vd] >= C->kdir) continue;
+            taken[vd]++;
+            int full = 0; for (int g = 0; g < nv; g++) full += nK[g] > 0 && taken[g] >= C->kdir;
+            done = full >= ngroups ? ktop : 0;
+        } else done++;
         g_cmode = (st2m[k] / 1000) % 10;
-        g_pair = Pr[dir][st2[k].k];
-        chunk_construct(arr[dir], n, Ks[dir][st2[k].k], st2m[k] % 1000, bw, bc, &tmp);
+        g_pair = Pr[vd][st2[k].k];
+        chunk_construct(arr[dir], n, Ks[vd][st2[k].k], st2m[k] % 1000, bw, bc, &tmp);
         if (dir) {
             OpVec r; ov_init(&r);
             for (int i = tmp.n - 1; i >= 0; i--) ov_push(&r, invop[tmp.d[i]]);
             ov_copy(&tmp, &r); ov_free(&r);
         }
-        if (C->verbose) fprintf(stderr, "full dir=%d stage2=%d full=%d t=%.2f\n", dir, st2[k].size, tmp.n, now_sec() - tb0);
-        if (!haveBase || tmp.n < base->n) { ov_copy(base, &tmp); haveBase = 1; bestDir = dir; bestK = st2[k].k; }
+        if (C->verbose) fprintf(stderr, "full group=%d stage2=%d full=%d t=%.2f\n", vd, st2[k].size, tmp.n, now_sec() - tb0);
+        if (!haveBase || tmp.n < base->n) { ov_copy(base, &tmp); haveBase = 1; bestV = vd; bestK = st2[k].k; }
     }
-    if (C->verbose) fprintf(stderr, "init dir=%d\n", bestDir);
+    if (C->verbose) fprintf(stderr, "init group=%d\n", bestV);
+    g_pair = NULL;
     free(st2); free(st2m);
     int lis_len = 0;
-    for (int i = 0; i < n; i++) lis_len += Ks[bestDir][bestK][i];
-    g_pair = NULL;
-    for (int dir = 0; dir < ndir; dir++) { for (int k = 0; k < nK[dir]; k++) { free(Ks[dir][k]); free(Pr[dir][k]); } free(Ks[dir]); free(Pr[dir]); }
+    for (int i = 0; i < n; i++) lis_len += Ks[bestV][bestK][i];
+    for (int vd = 0; vd < nv; vd++) { for (int k = 0; k < nK[vd]; k++) { free(Ks[vd][k]); free(Pr[vd][k]); } free(Ks[vd]); free(Pr[vd]); }
     ov_free(&tmp);
     if (arr[1]) free(arr[1]);
     *lis_out = lis_len;
@@ -119,7 +135,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, -1};
-    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 8, isswapOpt = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 8, isswapOpt = 1, swrOpt = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -136,6 +152,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
         else if (!strncmp(a, "--nlis=", 7)) nlisOpt = atoi(a + 7);
         else if (!strncmp(a, "--dualig=", 9)) dualig = atoi(a + 9);
+        else if (!strncmp(a, "--swratio=", 10)) swrOpt = atoi(a + 10);
         else if (!strncmp(a, "--isswap=", 9)) isswapOpt = atoi(a + 9);
         else if (!strncmp(a, "--kdir=", 7)) kdirOpt = atoi(a + 7);
         else if (!strncmp(a, "--ktop=", 7)) ktopOpt = atoi(a + 7);
@@ -189,14 +206,14 @@ int main(int argc, char **argv) {
     int peepK[3] = {4, 6, 8}, npeep = n <= 150 ? 3 : 2;
     double t0g = now_sec();
 
-    InitCfg C = {nlis, ktop, bw, bws, bc, kper, bwm, nm, {0}, 0, 0, 0};
+    InitCfg C = {nlis, ktop, bw, bws, bc, kper, bwm, nm, {0}, 0, 0, 0, 16};
     memcpy(C.mlist4, mlist4, sizeof C.mlist4);
     OpVec base; ov_init(&base);
     int lis_len = 0;
     /* dual (inverse-permutation) initial solutions, ktop full beams per direction: on by default */
     if (P.dual < 0) P.dual = 1;
     if (kdirOpt < 0) kdirOpt = P.dual ? ktop : 0;
-    C.verbose = P.verbose; C.kdir = kdirOpt; C.isswap = isswapOpt;
+    C.verbose = P.verbose; C.kdir = kdirOpt; C.isswap = isswapOpt; if (swrOpt > 0) C.swratio = swrOpt;
     build_init(a0, n, &C, P.dual ? 2 : 1, &base, &lis_len);
     Rep rep; memset(&rep, 0, sizeof rep);
     g_convSA = 1;  /* the base may contain SA (IS+swap starts) */

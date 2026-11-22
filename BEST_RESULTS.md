@@ -1,4 +1,17 @@
-# BEST RESULTS (updated 2026-11-22, v16)
+# BEST RESULTS (updated 2026-11-22, v17)
+
+## v17 = v16 + IS+swap start candidates for structured inputs — structured "hard" inputs (research/tools/worst_gen.py)
+Families from keusidan/42-push_swap-solver docs/04 (re-implemented). Random inputs never pass the gate
+(IS+swap length ≥ 1.6 × LIS), so v17 is identical to v16 there (the held-out numbers below apply).
+| N=500 input | v16 | **v17** | reference | keusidan best |
+|---|---:|---:|---:|---:|
+| coprime (49i mod 500) | 2980 | 3005 (2964/2967 on reruns; v16 2966/2962) | 3276 | 3477 |
+| bitrev | 3074 | 3093 (same algorithm, noise) | 3380 | 3543 |
+| alt-bitrev | 2875 | 2905 (same algorithm, noise) | 3079 | 3390 |
+| golden | 3246 | 3236 | 3350 | 3529 |
+| es (√n descending blocks) | 1968 | **1545** | 1898 | 2179 |
+N=100: v17 coprime 388, bitrev 395, alt-bitrev 351, golden 385, es 272 vs reference 418 / 406 / 365 / 418 / 276.
+
 
 ## v16 = v15 + IG alternating between P and P^-1 (8 phases) — held-out eval3 + eval4, 60 cases
 | N | Solver | Median | Mean | Std | Max | s/case |

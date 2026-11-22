@@ -34,6 +34,8 @@ deterministic run. Invalid input prints `Error`. This is not a norminette-compli
    (with an arc-cover estimate of the remaining rotations). The same construction is also run on the inverse
    permutation P⁻¹; reversing that op sequence and inverting each op (pa↔pb, ra↔rra, …) also sorts P, and the shorter
    one is kept ("dual" start, idea from keusidan/42-push_swap-solver). This mostly removes bad starting solutions.
+   For structured inputs where "increasing after swapping adjacent pairs" keeps far more values in A than the LIS
+   (e.g. descending blocks), IS+swap starts are added as an extra candidate group.
 3. **Iterated Greedy** (the time is split into 8 phases; between phases the best solution is converted to the
    inverse permutation and back, so the search alternates between the two equivalent problems): remove a few values, then reinsert each one at the jointly optimal choice of
    "when it goes to B, when it comes back, and where it sits in B and in A". The cost difference of each

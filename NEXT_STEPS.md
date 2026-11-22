@@ -1,7 +1,8 @@
-# NEXT STEPS (updated 2026-11-21, after v16)
+# NEXT STEPS (updated 2026-11-21, after v17)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v16 (C)** in `research/c/`: v14 + dual start (`--dual`, `--kdir`) + IG alternating between P and P⁻¹ in 8 phases (`--dualig`); C only.
+- **Best solver: PSIG v17 (C)** (= v16 on random inputs; IS+swap start group for structured inputs, `--isswap`)
+- Previous: PSIG v16 (C) in `research/c/`: v14 + dual start (`--dual`, `--kdir`) + IG alternating between P and P⁻¹ in 8 phases (`--dualig`); C only.
   With `--dual=0 --dualig=1` it is byte-identical to the C++ version (`cmp_c_cpp.sh` passes it). Same algorithm as the C++ research version
   `research/src/psig.cpp`. With `--iters=N` the two are byte-identical: check with
   `research/tools/cmp_c_cpp.sh SET NCASES ITERS` after **every** change to either version. (C-only speed-ups must keep identical output.)
@@ -12,6 +13,8 @@
 - Machine: 4 vCPU only. At most 4 solver processes; nothing heavy while a time-limited benchmark runs.
 - Dev sets: `dev40_u100` (`--limit 40`), `dev40_u500` (`--offset 12 --limit 28`), `dev60_u500` (60 cases) for N=500 decisions.
   N=500 time-limited means vary about ±5 run to run over 28 cases; N=100 results are nearly deterministic.
+
+- Structured hard inputs: `data/sets/worst_u{100,500}.txt` (tools/worst_gen.py); check them after start-solution changes.
 
 ## Key facts learned (do not re-derive)
 1. N=500 final ≈ initial − ~410. The initial solution quality drives the result and its variance.

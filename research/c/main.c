@@ -105,8 +105,8 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 }
 
 int main(int argc, char **argv) {
-    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, 0};
-    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, -1};
+    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -178,6 +178,9 @@ int main(int argc, char **argv) {
     memcpy(C.mlist4, mlist4, sizeof C.mlist4);
     OpVec base; ov_init(&base);
     int lis_len = 0;
+    /* dual (inverse-permutation) initial solutions, ktop full beams per direction: on by default */
+    if (P.dual < 0) P.dual = 1;
+    if (kdirOpt < 0) kdirOpt = P.dual ? ktop : 0;
     C.verbose = P.verbose; C.kdir = kdirOpt;
     build_init(a0, n, &C, P.dual ? 2 : 1, &base, &lis_len);
     Rep rep; memset(&rep, 0, sizeof rep);

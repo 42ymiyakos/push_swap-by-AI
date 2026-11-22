@@ -128,3 +128,4 @@
 60. Kick from the best solution instead of the current one (kickbest): −0.17 (p = 0.85) → option only. Kick thresholds 100/300 (×2) ≈ 200.
 61. v13 held-out (60 cases): N=100 356.5 median, mean −6.18 vs reference (CI [−9.0, −3.3], 48 W / 2 T / 10 L, p = 0.0003) → significant for both sizes; N=500 2849.5, −91.5.
 62. Time budget 16 s / 45 s (≤ reference's 16.9 / 47.7 s) on held-out: N=500 −97.2 (vs −91.5 at 40 s); N=100 unchanged (−6.02) → v14: 15 s / 45 s.
+63. Dual start (from keusidan/42-push_swap-solver): build init on P^-1, reverse+invert ops. Init N=500 −25 mean, max 3510→3408 when both fully built. Final dev60: 3 beams per direction −13.3 (p .15), worst 3077→2953. Held-out: N=500 −23.3 (p .009), N=100 −2.68 (p .004) → v15 default for all n. C only (C++ parity check now passes --dual=0).

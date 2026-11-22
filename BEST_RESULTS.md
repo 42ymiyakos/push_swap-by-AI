@@ -1,4 +1,19 @@
-# BEST RESULTS (updated 2026-11-21, v14)
+# BEST RESULTS (updated 2026-11-22, v15)
+
+## v15 = v14 + dual initial solutions (inverse permutation, 3 full beams per direction) — held-out eval3 + eval4, 60 cases
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 100 | **PSIG v15 (C)** | **354.5** | **355.2** | 7.0 | 370 | 14.7 |
+| 100 | PSIG v14 | 357.5 | 357.9 | 8.2 | 384 | 15.8 |
+| 100 | reference | 363.5 | 363.9 | | | 16.9 |
+| 500 | **PSIG v15 (C)** | **2839.5** | **2847.1** | 48.9 | 3052 | 44.3 |
+| 500 | PSIG v14 | 2841.5 | 2870.4 | 75.3 | 3060 | 44.4 |
+| 500 | reference | 2967.5 | 2967.5 | 34.3 | 3041 | 47.7 |
+Paired vs v14: N=100 −2.68 (25 W / 26 T / 9 L, p = 0.004); N=500 −23.3 (41 W / 13 L, p = 0.009).
+Paired vs reference: N=100 **−8.7** (51 W / 1 T / 8 L, p < 0.0001); N=500 **−120.4** (57 W / 3 L, p < 0.0001).
+Dev (dev60_u500): dual top-3 overall −7.1, top-6 overall −7.4, 2 per direction −10.5, 3 per direction −13.3 (chosen).
+The gain is concentrated on bad starts: N=500 sd 75 → 49; median almost unchanged.
+
 
 ## v14 = v13 algorithm, default time 15 s (n ≤ 150) / 45 s (n > 300) — held-out eval3 + eval4, 60 cases
 | N | Solver | Median | Mean | Std | Max | s/case |

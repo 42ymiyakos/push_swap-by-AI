@@ -1,12 +1,13 @@
-# NEXT STEPS (updated 2026-11-21, after v14)
+# NEXT STEPS (updated 2026-11-21, after v15)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v14 (C)** in `research/c/` (commit `0208c72`; v13 algorithm, 45 s default for n > 300). Same algorithm as the C++ research version
+- **Best solver: PSIG v15 (C)** in `research/c/`: v14 + dual start (inverse permutation, `--dual`, `--kdir`; C only).
+  With `--dual=0` it is byte-identical to the C++ version (`cmp_c_cpp.sh` passes it). Same algorithm as the C++ research version
   `research/src/psig.cpp`. With `--iters=N` the two are byte-identical: check with
   `research/tools/cmp_c_cpp.sh SET NCASES ITERS` after **every** change to either version. (C-only speed-ups must keep identical output.)
 - Held-out results (eval3 + eval4, 60 cases per size; reference CSVs `eval3_ref_*`, `eval4_ref_*` exist):
-  - N=100: 356.5 median / 357.7 mean vs 363.5 / 363.9 → −6.18, p = 0.0003 (48 W / 2 T / 10 L).
-  - N=500 (v14, 45 s): 2841.5 / 2870.4 vs 2967.5 / 2967.5 → −97.2, p < 0.0001 (49 W / 11 L).
+  - N=100 (v15): 354.5 median / 355.2 mean vs 363.5 / 363.9 → −8.7, p < 0.0001 (51 W / 1 T / 8 L).
+  - N=500 (v15): 2839.5 / 2847.1 vs 2967.5 / 2967.5 → −120.4, p < 0.0001 (57 W / 3 L); sd 49, max 3052.
 - Defaults: 15 s (n ≤ 150), 25 s (n ≤ 300), 45 s otherwise; irot 16; ubw 1; final beam 1000 / 500; kick 200 (×2); A2A on.
 - Machine: 4 vCPU only. At most 4 solver processes; nothing heavy while a time-limited benchmark runs.
 - Dev sets: `dev40_u100` (`--limit 40`), `dev40_u500` (`--offset 12 --limit 28`), `dev60_u500` (60 cases) for N=500 decisions.
@@ -28,7 +29,8 @@
   already contaminated (looked at): do not use them for claims.
 
 ## Prioritized next actions (after v13)
-- Remaining weakness: N=500 spread (sd 75 vs 34) driven by the initial solution; worst cases ~3060.
+- N=500 spread reduced by the dual start (sd 75 → 49). Next: cheaper dual screening (init now ~10 s at N=500),
+  more start families (e.g. dual for the IG too: run IG on P^-1 for part of the time).
 - More C speed (identical output): sweep near-x loop, solve_prep, per-reinsertion candidate building (build_bl/al qsort).
 - More diversity at N=100 (kick helped: −1.7 on dev): other perturbation types, adaptive kick strength.
 

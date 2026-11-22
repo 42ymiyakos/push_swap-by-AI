@@ -7,11 +7,11 @@ operations as possible, always correct.
 
 | N | This repository (C version) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
 |---:|---:|---:|---:|
-| 100 | **356.5** (about 15 s) | 363.5 (about 17 s) | 608 |
-| 500 | **2841.5** (about 44 s) | 2967.5 (about 48 s) | 5349 |
+| 100 | **354.5** (about 15 s) | 363.5 (about 17 s) | 608 |
+| 500 | **2839.5** (about 44 s) | 2967.5 (about 48 s) | 5349 |
 
 - n ≤ 8 is solved optimally by exhaustive search (n=3: at most 2 ops, n=5: at most 8 ops).
-- Both sizes are significantly better than the reference: N=500 by 97.2 operations on average (p < 0.0001, 49 wins out of 60), N=100 by 6.2 operations (p = 0.0003, 48 wins, 2 ties, 10 losses).
+- Both sizes are significantly better than the reference: N=500 by 120.4 operations on average (p < 0.0001, 57 wins out of 60, worst case 3052), N=100 by 8.7 operations (p < 0.0001, 51 wins, 1 tie, 8 losses).
 - Full figures, conditions and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
 
 ## Quick start (C version)
@@ -31,7 +31,9 @@ deterministic run. Invalid input prints `Error`. This is not a norminette-compli
    in A (K), the order in which each value moves (query list), and its cyclic position inside each stack
    (AOrder/BOrder keys). Any such combination always decodes to a correct sort.
 2. **Initial solution**: LIS candidates from many start positions, chunked A→B, then beam search for B→A
-   (with an arc-cover estimate of the remaining rotations).
+   (with an arc-cover estimate of the remaining rotations). The same construction is also run on the inverse
+   permutation P⁻¹; reversing that op sequence and inverting each op (pa↔pb, ra↔rra, …) also sorts P, and the shorter
+   one is kept ("dual" start, idea from keusidan/42-push_swap-solver). This mostly removes bad starting solutions.
 3. **Iterated Greedy**: remove a few values, then reinsert each one at the jointly optimal choice of
    "when it goes to B, when it comes back, and where it sits in B and in A". The cost difference of each
    candidate is computed exactly, which turns the choice into an O(Q) DP. All B slots are evaluated at once

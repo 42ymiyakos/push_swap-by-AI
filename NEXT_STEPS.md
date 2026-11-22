@@ -31,12 +31,16 @@
 - Confirm on eval3 + eval4 (60 cases) only for candidates that win on dev. Do not tune on eval sets. eval/eval2 are
   already contaminated (looked at): do not use them for claims.
 
-## Prioritized next actions (after v13)
-- N=500 spread reduced by the dual start (sd 75 → 49). Next: cheaper dual screening (init now ~10 s at N=500),
-  more start families. Alternating P / P⁻¹ works (v16): other equivalent transforms might too (e.g. the
-  reversed-value / complement symmetry, if one maps sorting to sorting), adaptive phase lengths.
-- More C speed (identical output): sweep near-x loop, solve_prep, per-reinsertion candidate building (build_bl/al qsort).
-- More diversity at N=100 (kick helped: −1.7 on dev): other perturbation types, adaptive kick strength.
+## Prioritized next actions (after v17, agreed with the user)
+1. **Weak-pattern study** (data first): features of held-out cases where we lose to the reference or score badly
+   (LIS length, initial-solution quality, local structure); form a hypothesis, generate inputs that amplify it
+   (as with es); optionally an adversarial input search with a short-time proxy.
+2. **Rarely used ops**: count op usage in our outputs (sb ≈ 0, sa/ss few). Estimate the upper bound of what sb/ss
+   could save (e.g. peephole with larger windows / exact local re-solve on sample outputs) before extending the
+   representation (B-side swaps, multi-step A2A).
+3. **Distance to optimum** at small n (exact BFS for n ≈ 10–12): where is the remaining waste (rotations vs choice
+   of pushed values)?
+4. Later: equal-long-time comparison with the reference deep mode; time–quality curve; adaptive phase switching.
 
 ## Older list
 1. **N=500 variance / worst cases**: add more structurally different initial-solution families to the candidate pool

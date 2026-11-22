@@ -1,7 +1,8 @@
 # NEXT STEPS (updated 2026-11-22, after v17 + deep comparison)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v17 (C)** (= v16 on random inputs; IS+swap start group for structured inputs, `--isswap`)
+- **Best solver: PSIG v18 (C)** (= v17 at default budgets; kick 50 when `--time` > 90 s)
+- Previous: PSIG v17 (C) (= v16 on random inputs; IS+swap start group for structured inputs, `--isswap`)
 - Previous: PSIG v16 (C) in `research/c/`: v14 + dual start (`--dual`, `--kdir`) + IG alternating between P and P⁻¹ in 8 phases (`--dualig`); C only.
   With `--dual=0 --dualig=1` it is byte-identical to the C++ version (`cmp_c_cpp.sh` passes it). Same algorithm as the C++ research version
   `research/src/psig.cpp`. With `--iters=N` the two are byte-identical: check with
@@ -43,7 +44,7 @@
 3. **Distance to optimum** at small n (exact BFS for n ≈ 10–12): where is the remaining waste (rotations vs choice
    of pushed values)?
 4. Done (log 70): deep comparison. N=100 level with the reference deep mode at 300 s; N=500 +70 at 600 s.
-5. **Long-budget N=500 search** (new top priority for long runs): the gain per time doubling drops (25 → 19). Try, on
+5. **Long-budget N=500 search** (log 71–72 done: convfix neutral, dualig 32 worse, kick 50 small/unconfirmed): the gain per time doubling drops (25 → 19). Try, on
    dev with 180 s budgets: threshold/late acceptance only after stagnation, growing destroy sizes over time, elite pool
    with restarts/path relinking, more dualig phases for long budgets. Keep the 45 s default unchanged unless it also wins there.
 

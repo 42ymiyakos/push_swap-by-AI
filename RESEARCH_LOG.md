@@ -143,3 +143,9 @@
     placed entries (converted reps verified by emit); then all switches succeed. Also: the best is kept across phases.
     Effect: dev60 45 s −6.0 vs old v17 run, but a fresh v17 rerun is itself −7.8 (run noise ≈ ±8) → +1.8 (p .52);
     40 cases at 180 s: +0.1 (p .98). → no effect; option kept, default off. dualig=32 at 180 s: +15.0 (10 W / 30 L) → worse.
+72. Long-budget kick (40 dev cases, N=500, 180 s, v17 kick 200 baseline run twice: 2792.2 / 2794.7): kick 1000 +7.8 (p .007),
+    kickmul 3 −0.3, kick 100 +0.7, kick 50 −10.2 / −4.2 (two runs; mean of 2 vs mean of 2: −8.4, 26 W / 14 L), kick 25 −9.2.
+    At 45 s kick 50 is within noise (+7.2 / −0.6 vs two v17 runs). v18: kick 50 when the budget is > 90 s, else 200 (identical
+    output at default budgets). Held-out deep sets: N=500 180 s −0.84 (p .86, not confirmed); N=100 300 s −1.76 (p .10) vs v17,
+    and −3.00 vs the reference deep mode (27 W / 1 T / 22 L, p .033). Kept as default since it is neutral-or-better; the dev
+    gain at N=500 did not transfer (selection + run noise ≈ ±5 at 180 s on 40 cases).

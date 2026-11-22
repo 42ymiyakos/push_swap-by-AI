@@ -1,4 +1,4 @@
-# BEST RESULTS (updated 2026-11-22, v17)
+# BEST RESULTS (updated 2026-11-22, v18)
 
 ## Time–quality curve vs the reference deep mode (v17, deep_u100 / deep_u500 = the reference's own 50+50 deep benchmark inputs)
 Reference deep mode: about 8 h per case (its own logs). Ours: `--time=T`, 4 cases in parallel on 4 vCPU.
@@ -8,12 +8,14 @@ Reference deep mode: about 8 h per case (its own logs). Ours: `--time=T`, 4 case
 | 100 | 15 s | 353.76 | 354 | 8.6 | 373 | +8.18 | 8/1/41 | <.0001 |
 | 100 | 60 s | 348.98 | 349.5 | 7.1 | 365 | +3.40 | 16/2/32 | .028 |
 | 100 | 300 s | **344.34** | 345 | 7.3 | 356 | **−1.24** | 27/2/21 | .40 |
+| 100 | 300 s, v18 (kick 50) | **342.58** | 343 | 7.0 | 358 | **−3.00** | 27/1/22 | **.033** |
 | 500 | reference deep (~8 h) | 2684.26 | 2682.5 | 29.9 | 2765 | | | |
 | 500 | 45 s | 2837.30 | 2837.5 | 45.3 | 3035 | +153.0 | 0/0/50 | <.0001 |
 | 500 | 180 s | 2786.84 | 2778 | 47.9 | 2948 | +102.6 | 0/0/50 | <.0001 |
+| 500 | 180 s, v18 (kick 50) | 2786.00 | 2785 | 45.4 | 2967 | +101.7 | 0/0/50 | <.0001 |
 | 500 | 600 s | 2753.94 | 2755.5 | 40.8 | 2908 | +69.7 | 1/1/48 | <.0001 |
 
-N=100: at 300 s (≈ 1/100 of the reference's time) we are level with the deep mode (mean slightly better, median 3 worse,
+N=100: v18 at 300 s (≈ 1/100 of the reference's time) is significantly better than the deep mode (−3.0, p .033); v17 was level (mean slightly better, median 3 worse,
 not significant; our max is much lower). N=500: still clearly behind; the gain per time doubling falls from ≈ 25 (45→180 s)
 to ≈ 19 (180→600 s). Extrapolating that rate would need roughly 2 h per case to close the gap, so the long-time behaviour
 of our IG (greedy acceptance, fixed destroy sizes) is the main thing to fix at N=500.

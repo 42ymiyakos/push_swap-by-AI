@@ -188,6 +188,7 @@ static int nextlive(const GE *L, int m, int t, int dir) {
 }
 static void ge_insert(GE *L, int *m, int pos, GE e) { memmove(L + pos + 1, L + pos, sizeof(GE) * (*m - pos)); L[pos] = e; (*m)++; }
 
+int g_convSA = 0;
 int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
     GE *A = xmalloc(sizeof(GE) * (2 * n + 2)), *B = xmalloc(sizeof(GE) * (n + 2));
     int mA = 0, mB = 0, ta = 0, tb = 0, liveA = n, liveB = 0, ok = 1;
@@ -198,6 +199,26 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
     memset(r->inK, 1, n); memset(r->present, 1, n);
     for (int k = 0; k < ops->n && ok; k++) {
         int o = ops->d[k];
+        if (o == SA && g_convSA) {  /* swap of two init-state values in A -> A2A query (top value jumps one step forward) */
+            if (liveA < 2) continue;
+            int x = A[ta].v;
+            int ny = nextlive(A, mA, ta, 1);
+            if (A[ta].target || trip[x]) {
+                /* the second value y jumps to the top instead (A2A backwards) */
+                int y = A[ny].v;
+                if (A[ny].target || trip[y]) { ok = 0; break; }
+                trip[y] = 1; r->inK[y] = 0; r->isA2A[y] = 1; r->q[r->nq].v = (int16_t)y; r->q[r->nq].t = 2; r->nq++;
+                A[ny].live = 0;
+                GE e = {y, 1, 1}; ge_insert(A, &mA, ta, e);
+                /* ta now indexes the new y entry */
+                continue;
+            }
+            trip[x] = 1; r->inK[x] = 0; r->isA2A[x] = 1; r->q[r->nq].v = (int16_t)x; r->q[r->nq].t = 2; r->nq++;
+            A[ta].live = 0;
+            GE e = {x, 1, 1}; ge_insert(A, &mA, ny + 1, e);
+            ta = ny;
+            continue;
+        }
         if (o == SA || o == SB || o == SS) { ok = 0; break; }
         if ((o == RA || o == RR) && liveA > 1) ta = nextlive(A, mA, ta, 1);
         if ((o == RRA || o == RRR) && liveA > 1) ta = nextlive(A, mA, ta, -1);

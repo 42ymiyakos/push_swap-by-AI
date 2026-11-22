@@ -109,7 +109,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 
 int main(int argc, char **argv) {
     Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, 200, 2, 0, -1};
-    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
+    int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 1, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
         const char *a = argv[first];
         if (!strncmp(a, "--time=", 7)) P.time = atof(a + 7);
@@ -125,6 +125,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--kickmul=", 10)) P.kickmul = atoi(a + 10);
         else if (!strncmp(a, "--kickbest=", 11)) P.kickbest = atoi(a + 11);
         else if (!strncmp(a, "--nlis=", 7)) nlisOpt = atoi(a + 7);
+        else if (!strncmp(a, "--dualig=", 9)) dualig = atoi(a + 9);
         else if (!strncmp(a, "--kdir=", 7)) kdirOpt = atoi(a + 7);
         else if (!strncmp(a, "--ktop=", 7)) ktopOpt = atoi(a + 7);
         else if (!strncmp(a, "--bw=", 5)) bwOpt = atoi(a + 5);
@@ -198,11 +199,48 @@ int main(int argc, char **argv) {
     if (P.time < 0.5) P.time = 0.5;
     Rep best; memset(&best, 0, sizeof best);
     int bestCost; long long iters;
-    ig_run(&rep, &P, &rng, &best, &bestCost, &iters);
-    emit(&best, &ops);
-    if (ops.n != bestCost || !verify_ops(a0, n, &ops)) {
-        fprintf(stderr, "internal: emit mismatch %d vs %d\n", ops.n, bestCost);
-        ov_copy(&ops, &base);
+    if (dualig <= 1) {
+        ig_run(&rep, &P, &rng, &best, &bestCost, &iters);
+        emit(&best, &ops);
+        if (ops.n != bestCost || !verify_ops(a0, n, &ops)) {
+            fprintf(stderr, "internal: emit mismatch %d vs %d\n", ops.n, bestCost);
+            ov_copy(&ops, &base);
+        }
+    } else {
+        /* alternate IG phases between P and its inverse (reversed, inverted op sequences) */
+        int *inv = xmalloc(sizeof(int) * n);
+        for (int i = 0; i < n; i++) inv[a0[i]] = i;
+        int dir = 0; iters = 0;
+        double T = P.time, tst = now_sec();
+        OpVec cur; ov_init(&cur);
+        g_convSA = 1;
+        for (int ph = 0; ph < dualig; ph++) {
+            Params Pp = P; Pp.time = T * (ph + 1) / dualig - (now_sec() - tst);
+            if (Pp.time < 0.05) Pp.time = 0.05;
+            long long it = 0;
+            ig_run(&rep, &Pp, &rng, &best, &bestCost, &it); iters += it;
+            emit(&best, &cur);
+            if (P.verbose) fprintf(stderr, "phase %d dir %d cost %d iters %lld\n", ph, dir, cur.n, it);
+            if (ph + 1 == dualig) break;
+            OpVec r2; ov_init(&r2);
+            for (int i = cur.n - 1; i >= 0; i--) ov_push(&r2, invop[cur.d[i]]);
+            Rep nr; memset(&nr, 0, sizeof nr);
+            const int *other = dir ? a0 : inv;
+            if (verify_ops(other, n, &r2) && convert(other, n, &r2, &nr)) {
+                int fc = full_cost(&nr);
+                if (P.verbose) fprintf(stderr, "  convert ok: %d -> %d\n", cur.n, fc);
+                rep_free(&rep); rep = nr; dir ^= 1;
+            } else {
+                if (P.verbose) fprintf(stderr, "  convert failed\n");
+                rep_free(&nr); rep_copy(&rep, &best);
+            }
+            ov_free(&r2);
+        }
+        g_convSA = 0;
+        if (dir) { ov_free(&ops); ov_init(&ops); for (int i = cur.n - 1; i >= 0; i--) ov_push(&ops, invop[cur.d[i]]); }
+        else ov_copy(&ops, &cur);
+        if (!verify_ops(a0, n, &ops)) { fprintf(stderr, "internal: dualig verify failed\n"); ov_copy(&ops, &base); }
+        ov_free(&cur); free(inv);
     }
     int saved = 0;
     double tp0 = now_sec();

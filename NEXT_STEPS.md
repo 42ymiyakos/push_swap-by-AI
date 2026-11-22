@@ -1,4 +1,4 @@
-# NEXT STEPS (updated 2026-11-21, after v17)
+# NEXT STEPS (updated 2026-11-22, after v17 + deep comparison)
 
 ## Current status (resume from here)
 - **Best solver: PSIG v17 (C)** (= v16 on random inputs; IS+swap start group for structured inputs, `--isswap`)
@@ -42,7 +42,10 @@
    representation (B-side swaps, multi-step A2A).
 3. **Distance to optimum** at small n (exact BFS for n ≈ 10–12): where is the remaining waste (rotations vs choice
    of pushed values)?
-4. Later: equal-long-time comparison with the reference deep mode; time–quality curve; adaptive phase switching.
+4. Done (log 70): deep comparison. N=100 level with the reference deep mode at 300 s; N=500 +70 at 600 s.
+5. **Long-budget N=500 search** (new top priority for long runs): the gain per time doubling drops (25 → 19). Try, on
+   dev with 180 s budgets: threshold/late acceptance only after stagnation, growing destroy sizes over time, elite pool
+   with restarts/path relinking, more dualig phases for long budgets. Keep the 45 s default unchanged unless it also wins there.
 
 ## Older list
 1. **N=500 variance / worst cases**: add more structurally different initial-solution families to the candidate pool

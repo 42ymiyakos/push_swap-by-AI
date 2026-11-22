@@ -1,4 +1,14 @@
-# BEST RESULTS (updated 2026-11-22, v15)
+# BEST RESULTS (updated 2026-11-22, v16)
+
+## v16 = v15 + IG alternating between P and P^-1 (8 phases) — held-out eval3 + eval4, 60 cases
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 100 | **PSIG v16 (C)** | **354** | **353.7** | 6.7 | 369 | 14.7 |
+| 500 | **PSIG v16 (C)** | **2833** | **2838.9** | 50.9 | 3064 | 44.3 |
+Paired vs v15: N=100 −1.52 (33 W / 9 T / 18 L, p = 0.032); N=500 −8.2 (40 W / 20 L, p = 0.002).
+Paired vs reference: N=100 **−10.2** (55 W / 5 L, p < 0.0001); N=500 **−128.6** (58 W / 2 L, p < 0.0001).
+Dev: N=500 phases 2/4/8/16/32 → −5.5/−6.8/−10.0/−7.6/−5.3; N=100 8/16/32 → −2.35/−1.40/−0.72.
+
 
 ## v15 = v14 + dual initial solutions (inverse permutation, 3 full beams per direction) — held-out eval3 + eval4, 60 cases
 | N | Solver | Median | Mean | Std | Max | s/case |

@@ -189,6 +189,7 @@ static int nextlive(const GE *L, int m, int t, int dir) {
 static void ge_insert(GE *L, int *m, int pos, GE e) { memmove(L + pos + 1, L + pos, sizeof(GE) * (*m - pos)); L[pos] = e; (*m)++; }
 
 int g_convSA = 0;
+int g_convFix = 0, g_convFixed = 0;
 int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
     GE *A = xmalloc(sizeof(GE) * (2 * n + 2)), *B = xmalloc(sizeof(GE) * (n + 2));
     int mA = 0, mB = 0, ta = 0, tb = 0, liveA = n, liveB = 0, ok = 1;
@@ -227,7 +228,14 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
         if (o == PB) {
             if (!liveA) { ok = 0; break; }
             int v = A[ta].v;
-            if (A[ta].target || trip[v]) { ok = 0; break; }
+            if (g_convFix && A[ta].target && r->isA2A[v]) {
+                /* a value moved by an earlier sa (A2A) is pushed later: drop its A2A query and treat it as an
+                 * init value pushed from its original place (the cost changes slightly; it is recomputed) */
+                int w = 0;
+                for (int q = 0; q < r->nq; q++) if (!(r->q[q].v == v && r->q[q].t == 2)) r->q[w++] = r->q[q];
+                r->nq = w; r->isA2A[v] = 0; A[ta].target = 0; A[ta].v = -1;
+                g_convFixed++;
+            } else if (A[ta].target || trip[v]) { ok = 0; break; }
             trip[v] = 1; r->inK[v] = 0; r->q[r->nq].v = (int16_t)v; r->q[r->nq].t = 0; r->nq++;
             A[ta].live = 0; liveA--;
             if (liveA) ta = nextlive(A, mA, ta, 1);
@@ -246,6 +254,7 @@ int convert(const int *a0, int n, const OpVec *ops, Rep *r) {
     if (liveB) ok = 0;
     if (ok) {
         for (int i = 0; i < mA; i++) {
+            if (A[i].v < 0) continue;
             ll key = KEY_BASE + (ll)i * KEY_GAP;
             if (A[i].target) r->tk[A[i].v] = key; else r->ik[A[i].v] = key;
         }

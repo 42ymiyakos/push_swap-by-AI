@@ -772,7 +772,7 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
         if (c < curCost) lastImp = it;
         if (kick || c <= curCost || c <= h) {
             Rep t = cur; cur = w; w = t; curCost = c;
-            if (c < *bestCost) { *bestCost = c; rep_copy(best, &cur); }
+            if (c < *bestCost) { *bestCost = c; rep_copy(best, &cur); if (P->verbose >= 2) fprintf(stderr, "T %.3f %d %lld\n", now_sec(), c, it); }
         }
         hist[it % hl] = curCost;
     }

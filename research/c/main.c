@@ -1,6 +1,7 @@
 /* push_swap (C port of PSIG). Usage: push_swap [--time=S] [--iters=N] [--seed=S] [--verbose=1] numbers... */
 #include "ps.h"
 
+static int g_convSlack = 1000000;
 static int parse_args(int argc, char **argv, int first, ll **out, int *nout) {
     int cap = 16, n = 0;
     ll *v = xmalloc(sizeof(ll) * cap);
@@ -171,6 +172,8 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--pqd=", 6)) P.pqd = atof(a + 6);
         else if (!strncmp(a, "--seglen=", 9)) { P.seglen = atoi(a + 9); seglenSet = 1; }
         else if (!strncmp(a, "--dual=", 7)) P.dual = atoi(a + 7);
+        else if (!strncmp(a, "--convfix=", 10)) g_convFix = atoi(a + 10);
+        else if (!strncmp(a, "--convslack=", 12)) g_convSlack = atoi(a + 12);
         else if (!strncmp(a, "--a2amax=", 9)) P.a2amax = atoi(a + 9);
         else { fprintf(stderr, "Error\n"); return 1; }
     }
@@ -279,6 +282,7 @@ int main(int argc, char **argv) {
         int dir = 0; iters = 0;
         double T = P.time, tst = now_sec();
         OpVec cur; ov_init(&cur);
+        OpVec gbest; ov_init(&gbest);
         g_convSA = 1;
         for (int ph = 0; ph < dualig; ph++) {
             Params Pp = P; Pp.time = T * (ph + 1) / dualig - (now_sec() - tst);
@@ -287,14 +291,19 @@ int main(int argc, char **argv) {
             ig_run(&rep, &Pp, &rng, &best, &bestCost, &it); iters += it;
             emit(&best, &cur);
             if (P.verbose) fprintf(stderr, "phase %d dir %d cost %d iters %lld\n", ph, dir, cur.n, it);
+            if (gbest.n == 0 || cur.n < gbest.n) {
+                ov_free(&gbest); ov_init(&gbest);
+                if (dir) for (int i = cur.n - 1; i >= 0; i--) ov_push(&gbest, invop[cur.d[i]]);
+                else ov_copy(&gbest, &cur);
+            }
             if (ph + 1 == dualig) break;
             OpVec r2; ov_init(&r2);
             for (int i = cur.n - 1; i >= 0; i--) ov_push(&r2, invop[cur.d[i]]);
             Rep nr; memset(&nr, 0, sizeof nr);
             const int *other = dir ? a0 : inv;
-            if (verify_ops(other, n, &r2) && convert(other, n, &r2, &nr)) {
-                int fc = full_cost(&nr);
-                if (P.verbose) fprintf(stderr, "  convert ok: %d -> %d\n", cur.n, fc);
+            int fc = -1;
+            if (verify_ops(other, n, &r2) && convert(other, n, &r2, &nr) && (fc = full_cost(&nr)) <= cur.n + g_convSlack) {
+                if (P.verbose) fprintf(stderr, "  convert ok: %d -> %d (fixed %d)\n", cur.n, fc, g_convFixed);
                 rep_free(&rep); rep = nr; dir ^= 1;
             } else {
                 if (P.verbose) fprintf(stderr, "  convert failed\n");
@@ -303,8 +312,7 @@ int main(int argc, char **argv) {
             ov_free(&r2);
         }
         g_convSA = 0;
-        if (dir) { ov_free(&ops); ov_init(&ops); for (int i = cur.n - 1; i >= 0; i--) ov_push(&ops, invop[cur.d[i]]); }
-        else ov_copy(&ops, &cur);
+        ov_copy(&ops, &gbest); ov_free(&gbest);
         if (!verify_ops(a0, n, &ops)) { fprintf(stderr, "internal: dualig verify failed\n"); ov_copy(&ops, &base); }
         ov_free(&cur); free(inv);
     }

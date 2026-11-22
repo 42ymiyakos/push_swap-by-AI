@@ -117,7 +117,8 @@ int final_rot(const St *s, const Rep *r, int *dir);
 int full_cost(const Rep *r);
 void emit(const Rep *r, OpVec *ops);
 int convert(const int *a0, int n, const OpVec *ops, Rep *r);
-extern int g_convSA;  /* convert: map SA (init-state values) to A2A queries */
+extern int g_convSA;
+extern int g_convFix, g_convFixed;  /* convert: map SA (init-state values) to A2A queries */
 static inline int topv(const ll *s, int n, int t) { return n == 0 ? -1 : (int)(s[t] & 1023); }
 
 /* ---------- construction ---------- */

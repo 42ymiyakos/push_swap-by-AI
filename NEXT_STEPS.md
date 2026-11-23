@@ -49,6 +49,11 @@
 3. **Distance to optimum** at small n (exact BFS for n ≈ 10–12): where is the remaining waste (rotations vs choice
    of pushed values)?
 4. Done (log 70): deep comparison. N=100 level with the reference deep mode at 300 s; N=500 +70 at 600 s.
+5a. Plateau after v20 (log 76–77): dualig, seglen, kdir, bw, auto history, keep bonus, kick all within noise at 45 s.
+   Remaining levers need new structure: (i) a faster reinsertion core (solve_slots/dp_bt ≈ 27% + prep_b/lb_ll ≈ 11% of a
+   30 s run; the machine change showed ≈ 2× speed ≈ 36 moves at 45 s), (ii) a new neighbourhood (e.g. moving a block of
+   consecutive B values together, or re-optimising the kept set K with an exact DP over a window), (iii) elite pool /
+   path relinking across the 8 phases.
 5. **Long-budget N=500 search, continued** (v19 halved the 600 s gap): refine the history rule (adaptive: from the measured
    iteration rate instead of the time), LAHC × kick interplay (kick 50 vs 200 with LAHC at 180 s), destroy-size schedule,
    elite pool / path relinking. The reference keeps more values in A (40–46 vs 25–33) — test a bias towards larger kept sets.

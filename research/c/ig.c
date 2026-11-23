@@ -737,13 +737,28 @@ void ig_run(const Rep *init, const Params *P, Rng *rng, Rep *best, int *bestCost
     rep_copy(&cur, init);
     int curCost = full_cost(&cur);
     rep_copy(best, &cur); *bestCost = curCost;
-    int hl = imax(1, P->lahc);
-    int *hist = xmalloc(sizeof(int) * hl);
-    for (int k = 0; k < hl; k++) hist[k] = curCost;
+    /* lahc < 0: automatic history = (expected iterations of this call) / (-lahc); with a time limit the rate is
+     * measured over the first 10% of the budget (greedy until then), so the history follows the machine speed */
+    int autoR = P->lahc < 0 ? -P->lahc : 0, hcap = autoR ? 100000 : imax(1, P->lahc);
+    int hl = autoR ? (P->iters >= 0 ? (int)imax(1, (int)(P->iters / autoR)) : 1) : hcap;
+    if (hl > hcap) hl = hcap;
+    int autoPending = autoR && P->iters < 0;
+    int *hist = xmalloc(sizeof(int) * hcap);
+    for (int k = 0; k < hcap; k++) hist[k] = curCost;
     double t0 = now_sec();
     long long it, lastImp = 0;
     for (it = 0;; it++) {
         if (P->iters >= 0 ? it >= P->iters : ((it & 7) == 0 && now_sec() - t0 > P->time)) break;
+        if (autoPending && (it & 7) == 0 && it > 0) {
+            double el = now_sec() - t0;
+            if (el >= 0.1 * P->time) {
+                double est = it / el * P->time / autoR;
+                hl = est < 1 ? 1 : (est > hcap ? hcap : (int)(est + 0.5));
+                for (int k = 0; k < hl; k++) hist[k] = curCost;
+                autoPending = 0;
+                if (P->verbose >= 2) fprintf(stderr, "lahc auto: %lld iters in %.2fs -> history %d\n", it, el, hl);
+            }
+        }
         rep_copy(&w, (P->kick > 0 && it - lastImp >= P->kick && P->kickbest) ? best : &cur);
         compute_vcost(&g, &w);
         /* kick: after P->kick iterations without improving the current solution, one larger destroy is accepted */

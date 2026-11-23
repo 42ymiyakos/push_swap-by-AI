@@ -237,8 +237,12 @@ int main(int argc, char **argv) {
     }
     if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 45.0);
     if (P.kick < 0) P.kick = P.time > 90.0 ? 50 : 200;  /* long budgets: kick more often (log 72) */
-    /* LAHC history grows with the budget (log 74): N=500 45 s -> 10, 180 s -> 45; N=100 15 s -> 30 */
-    if (P.lahc < 0) { double c = n <= 150 ? 2.0 : (n <= 300 ? 0.5 : 0.25); P.lahc = (int)(c * P.time + 0.5); if (P.lahc < 1) P.lahc = 1; }
+    /* LAHC history grows with the budget (log 74): N=500 45 s -> 10, 180 s -> 45, 600 s -> 150; N=100 15 s -> 30.
+     * N <= 150 with a long budget (> 90 s, kick 50): plain descent is better (300 s: history 30 +1.9, 600 +4.6) */
+    if (P.lahc < 0) {
+        double c = n <= 150 ? (P.time > 90.0 ? 0.0 : 2.0) : (n <= 300 ? 0.5 : 0.25);
+        P.lahc = (int)(c * P.time + 0.5); if (P.lahc < 1) P.lahc = 1;
+    }
     int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2, kper = 3, bwm = 100;
     int mlist4[5] = {2, 3, 4, 0, 0}, nm = 3;
     if (n > 150 && n <= 300) { int t[4] = {3, 4, 5, 6}; memcpy(mlist4, t, sizeof t); nm = 4; }

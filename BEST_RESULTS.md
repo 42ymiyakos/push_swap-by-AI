@@ -1,4 +1,16 @@
-# BEST RESULTS (updated 2026-11-22, v18)
+# BEST RESULTS (updated 2026-11-23, v19)
+
+## v19 = v18 + late acceptance (LAHC) with a history that grows with the time budget — held-out eval3 + eval4, 60 cases
+History length: N > 300: 0.25 × time (45 s → 11, 180 s → 45, 600 s → 150); 150 < N ≤ 300: 0.5 × time; N ≤ 150: 2 × time
+up to 90 s (15 s → 30), plain descent above 90 s.
+| N | Solver | Median | Mean | Std | Max | s/case |
+|---:|---|---:|---:|---:|---:|---:|
+| 100 | **PSIG v19 (C)** | **352** | **351.9** | 6.7 | 366 | 14.7 |
+| 500 | **PSIG v19 (C)** | **2820** | **2817.5** | 50.9 | 3008 | 44.3 |
+Paired vs v16 (= v17/v18 on random inputs at default budgets): N=100 −1.80 (37 W / 3 T / 20 L, p = 0.041); N=500 **−21.4** (40 W / 20 L, p = 0.0001).
+Paired vs reference: N=100 **−12.0** (53 W / 7 L, p < 0.0001); N=500 **−150.0** (58 W / 2 L, p < 0.0001).
+Small n (eval sets, 200 cases): n=10 mean 16.62 (exact optimum on another 200-case set ≈ 16.50), n=50 141.4.
+
 
 ## Time–quality curve vs the reference deep mode (v17, deep_u100 / deep_u500 = the reference's own 50+50 deep benchmark inputs)
 Reference deep mode: about 8 h per case (its own logs). Ours: `--time=T`, 4 cases in parallel on 4 vCPU.
@@ -14,6 +26,15 @@ Reference deep mode: about 8 h per case (its own logs). Ours: `--time=T`, 4 case
 | 500 | 180 s | 2786.84 | 2778 | 47.9 | 2948 | +102.6 | 0/0/50 | <.0001 |
 | 500 | 180 s, v18 (kick 50) | 2786.00 | 2785 | 45.4 | 2967 | +101.7 | 0/0/50 | <.0001 |
 | 500 | 600 s | 2753.94 | 2755.5 | 40.8 | 2908 | +69.7 | 1/1/48 | <.0001 |
+| 100 | 15 s, v19 | 351.96 | 352 | 8.2 | 370 | +6.38 | 8/1/41 | <.0001 |
+| 100 | 60 s, v19 | 347.94 | 348 | 7.4 | 368 | +2.36 | 16/3/31 | .11 |
+| 100 | 300 s, v19 candidate (history 600) | 347.16 | 348 | 6.9 | 361 | +1.58 | 21/2/27 | .27 |
+| 500 | 45 s, v19 | 2815.00 | 2807 | 44.9 | 2988 | +130.7 | 1/0/49 | <.0001 |
+| 500 | 180 s, v19 | 2760.44 | 2755.5 | 43.3 | 2874 | +76.2 | 2/1/47 | <.0001 |
+| 500 | 600 s, v19 | **2719.42** | 2714.5 | 33.2 | 2863 | **+35.2** | 7/2/41 | <.0001 |
+
+v19 rows: N=500 gap halved at 600 s (+69.7 → +35.2); 180 s −25.6 vs v18. N=100 300 s: the candidate with history 600 was worse
+than v18 (+4.6), so the final v19 uses plain descent above 90 s at N ≤ 150 (= v18 there: 342.58, −3.00 vs deep, p .033).
 
 N=100: v18 at 300 s (≈ 1/100 of the reference's time) is significantly better than the deep mode (−3.0, p .033); v17 was level (mean slightly better, median 3 worse,
 not significant; our max is much lower). N=500: still clearly behind; the gain per time doubling falls from ≈ 25 (45→180 s)

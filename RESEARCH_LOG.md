@@ -155,3 +155,15 @@
     (each value pushed at most once, A2A via sa) is not the limit at small n; the N=500 gap is search.
     Structure vs reference (normal mode, 4 dev cases): both push every value at most once; the reference keeps 40–46 values
     in A (never pushed) vs our 25–33, and uses more sa/sb/ss (≈ 35 vs ≈ 12). Hypothesis: our IG under-explores larger kept sets.
+74. Late acceptance (LAHC, accept if cost ≤ the cost `h` iterations ago) for long budgets. The option existed (`--lahc`) but
+    was rejected early (log ≤ 41) at short budgets with large histories. Sweep (v18 + `--lahc=h`, kick 200):
+    N=500 45 s dev60 vs v17: h 5 −12.5, 10 **−24.4** (48 W / 11 L), 20 −12.3, 30 −13.8, 50 +3.2.
+    N=500 180 s dev40: h 20 −42.7, 50 **−48.5**, 100 −40.9, 300 −29.1 (v17 baseline, 33 W / 7 L at h 50).
+    N=100 15 s dev40: h 3 0.0, 10 −0.65, 30 −1.18 (p .18), 100 −1.15. N=100 300 s dev40: h 30 +1.9 vs h 1 (p .04).
+    The best history grows with the number of iterations at N=500 (≈ 3000 at 45 s, ≈ 14000 at 180 s) → v19 default:
+    0.25 × time (N > 300), 0.5 × time (N ≤ 300), 2 × time (N ≤ 150, ≤ 90 s), 1 (N ≤ 150, > 90 s).
+    Held-out eval3+eval4: N=500 −21.4 vs v16 (40 W / 20 L, p .0001), N=100 −1.8 (p .04). Deep sets vs the reference deep
+    mode: N=500 45 s +130.7 (v17 +153), 180 s +76.2 (v18 +101.7), 600 s +35.2 (v17 +69.7). N=100 15 s +6.4 (v17 +8.2),
+    60 s +2.4 (+3.4); 300 s with history 600 +1.6 (v18 −3.0) → plain descent above 90 s at N ≤ 150 (then identical to v18).
+    Interpretation: at N=500 greedy acceptance stalls in a local optimum; a short late-acceptance window keeps the walk moving
+    without drifting. At N=100 long runs already reach good optima and the kick (50) does the diversification.

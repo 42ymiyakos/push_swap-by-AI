@@ -1,7 +1,9 @@
-# NEXT STEPS (updated 2026-11-22, after v17 + deep comparison)
+# NEXT STEPS (updated 2026-11-23, after v19)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v18 (C)** (= v17 at default budgets; kick 50 when `--time` > 90 s)
+- **Best solver: PSIG v19 (C)**: v18 + LAHC with a budget-scaled history (log 74). Held-out N=500 −21.4 vs v16, N=100 −1.8.
+  Deep sets vs the reference deep mode: N=500 600 s +35.2 (was +69.7), N=100 300 s −3.0 (same as v18).
+- Previous: PSIG v18 (C) (= v17 at default budgets; kick 50 when `--time` > 90 s)
 - Previous: PSIG v17 (C) (= v16 on random inputs; IS+swap start group for structured inputs, `--isswap`)
 - Previous: PSIG v16 (C) in `research/c/`: v14 + dual start (`--dual`, `--kdir`) + IG alternating between P and P⁻¹ in 8 phases (`--dualig`); C only.
   With `--dual=0 --dualig=1` it is byte-identical to the C++ version (`cmp_c_cpp.sh` passes it). Same algorithm as the C++ research version
@@ -22,7 +24,7 @@
 2. IG time at N=500 is worth about 5 ops/s in the 30–40 s regime. Any speed-up of the reinsertion pays off directly.
 3. Wall-time split per reinsertion (N=500): sweep ≈ 2.2 ms, exact DP solves ≈ 1.7 ms. Callgrind instruction counts are
    misleading here: measure wall time.
-4. Greedy acceptance beats LAHC/racing/restarts. A2A (sa, 1 step) helps at N=100 once the initial solution is good.
+4. LAHC with a short history (≈ iterations/300 at N=500) beats greedy acceptance (log 74); long histories and racing/restarts do not. A2A (sa, 1 step) helps at N=100 once the initial solution is good.
 5. Failed or neutral (see RESEARCH_LOG 1–41): QSA, LAHC, two-phase constraint, IS+swap init, vectorized/unpruned sweep,
    three-pass sweep, coarse slot sweep, racing, wider init screening, peephole K=8 under a fixed budget.
 
@@ -44,7 +46,10 @@
 3. **Distance to optimum** at small n (exact BFS for n ≈ 10–12): where is the remaining waste (rotations vs choice
    of pushed values)?
 4. Done (log 70): deep comparison. N=100 level with the reference deep mode at 300 s; N=500 +70 at 600 s.
-5. **Long-budget N=500 search** (log 71–72 done: convfix neutral, dualig 32 worse, kick 50 small/unconfirmed): the gain per time doubling drops (25 → 19). Try, on
+5. **Long-budget N=500 search, continued** (v19 halved the 600 s gap): refine the history rule (adaptive: from the measured
+   iteration rate instead of the time), LAHC × kick interplay (kick 50 vs 200 with LAHC at 180 s), destroy-size schedule,
+   elite pool / path relinking. The reference keeps more values in A (40–46 vs 25–33) — test a bias towards larger kept sets.
+   Earlier: (log 71–72 done: convfix neutral, dualig 32 worse, kick 50 small/unconfirmed): the gain per time doubling drops (25 → 19). Try, on
    dev with 180 s budgets: threshold/late acceptance only after stagnation, growing destroy sizes over time, elite pool
    with restarts/path relinking, more dualig phases for long budgets. Keep the 45 s default unchanged unless it also wins there.
 

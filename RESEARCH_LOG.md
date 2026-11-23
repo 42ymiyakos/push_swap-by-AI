@@ -180,3 +180,6 @@
     (v19 on this machine +82.3). Not confirmed; adopted as neutral-or-better (both long-budget sets point the same way).
 76. v20 parameter plateau (dev60, 45 s, same machine): dualig 4 −1.3, 16 −2.4 (both p > .4); seglen 12 +4.9, 22 +12.5 (p .005)
     vs the N > 300 default 16. Nothing to tune here; next: iteration speed (the machine change cost +36 at 45 s, so speed is worth a lot).
+77. Construction budget with LAHC (dev60, 45 s; construction takes ≈ 12.7 s of 45 s): default rerun +0.28 (noise check),
+    kdir 2 −0.12, kdir 1 +5.7, bw 300 +3.5 (all p > .35). gprof (30 s run): beam_solve 27%, solve_slots 27%,
+    chunk_construct 22%, prep_b 6%, lb_ll 5%. → no gain from moving time between construction and IG.

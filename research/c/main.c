@@ -238,7 +238,8 @@ int main(int argc, char **argv) {
         print_ops(&ops); ov_free(&ops); free(K); free(a0); return 0;
     }
     if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 45.0);
-    if (P.kick < 0) P.kick = P.time > 90.0 ? 50 : 200;  /* long budgets: kick more often (log 72) */
+    /* kick: N <= 150 (plain descent above 90 s) 200, or 50 above 90 s (log 72); N > 150 with LAHC: 100 at every budget (log 75) */
+    if (P.kick < 0) P.kick = n <= 150 ? (P.time > 90.0 ? 50 : 200) : 100;
     /* LAHC history grows with the budget (log 74): N=500 45 s -> 10, 180 s -> 45, 600 s -> 150; N=100 15 s -> 30.
      * N <= 150 with a long budget (> 90 s, kick 50): plain descent is better (300 s: history 30 +1.9, 600 +4.6) */
     if (P.lahc == 0) {

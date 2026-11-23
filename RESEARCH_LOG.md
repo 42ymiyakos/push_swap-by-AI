@@ -178,3 +178,5 @@
     v20 = v19 with kick 100 for N > 150 at every budget. Held-out on this machine: eval3+eval4 45 s −0.73 vs v19
     (31 W / 1 T / 28 L, p .82); deep_u500 180 s −4.74 (28 W / 1 T / 21 L, p .13); vs the reference deep mode +77.5
     (v19 on this machine +82.3). Not confirmed; adopted as neutral-or-better (both long-budget sets point the same way).
+76. v20 parameter plateau (dev60, 45 s, same machine): dualig 4 −1.3, 16 −2.4 (both p > .4); seglen 12 +4.9, 22 +12.5 (p .005)
+    vs the N > 300 default 16. Nothing to tune here; next: iteration speed (the machine change cost +36 at 45 s, so speed is worth a lot).

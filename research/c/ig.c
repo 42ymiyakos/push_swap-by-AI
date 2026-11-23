@@ -217,6 +217,7 @@ static int cmp_pair(const void *x, const void *y) {
 }
 
 /* everything that does not depend on the B slots: query pass, prefix sums, keep/A2A options, per-target arrays */
+int g_keepBonus = 0;  /* experimental: keep-in-A option looks this much cheaper during reinsertion */
 static Best solve_prep(RI *R, const Rep *r, int v, const ll *Eb, int nb, const ll *Et, int nt, int keepOK, int vbf, St *s) {
     ll EkI = r->ik[v] * 1024 + v;
     pass(R, r, EkI, Eb, nb, Et, nt, s);
@@ -229,7 +230,7 @@ static Best solve_prep(RI *R, const Rep *r, int v, const ll *Eb, int nb, const l
     }
     if (keepOK) {
         int topo = (Q == 0 && vbf) ? R->rkI[0] : -1;
-        int d = R->P[Q] + fin(R, r, v, EkI, R->rkI[Q], topo);
+        int d = R->P[Q] + fin(R, r, v, EkI, R->rkI[Q], topo) - g_keepBonus;
         if (d < best.delta) { best.delta = d; best.keep = 1; }
     }
     grow(&R->tSUF, &R->tcap, nt * Wt + 1);
@@ -657,6 +658,7 @@ static int reinsert(IG *g, Rep *r, int v) {
             if (ub.delta < b.delta) { b = ub; EbUsed = g->Eub; }
             free(sc); free(sel);
         } else b = solve(R, r, v, g->Eb, nEb, g->Et, nEt, keepOK, vbf, &g->st);
+        if (b.keep) b.delta += g_keepBonus;
         r->present[v] = 1;
         r->isA2A[v] = 0;
         if (b.keep) { r->inK[v] = 1; r->tk[v] = r->ik[v]; }

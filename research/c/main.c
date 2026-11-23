@@ -2,6 +2,7 @@
 #include "ps.h"
 
 static int g_convSlack = 1000000;
+extern int g_keepBonus;
 static const char *g_evalops = NULL;
 /* a converted representation is used only if it emits a valid sequence of the computed cost */
 static int conv_ok(const int *a, int n, const Rep *r, int fc) {
@@ -184,6 +185,7 @@ int main(int argc, char **argv) {
         else if (!strncmp(a, "--dual=", 7)) P.dual = atoi(a + 7);
         else if (!strncmp(a, "--convfix=", 10)) g_convFix = atoi(a + 10);
         else if (!strncmp(a, "--convslack=", 12)) g_convSlack = atoi(a + 12);
+        else if (!strncmp(a, "--keepbonus=", 12)) g_keepBonus = atoi(a + 12);
         else if (!strncmp(a, "--a2amax=", 9)) P.a2amax = atoi(a + 9);
         else { fprintf(stderr, "Error\n"); return 1; }
     }

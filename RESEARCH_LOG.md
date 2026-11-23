@@ -167,3 +167,14 @@
     60 s +2.4 (+3.4); 300 s with history 600 +1.6 (v18 −3.0) → plain descent above 90 s at N ≤ 150 (then identical to v18).
     Interpretation: at N=500 greedy acceptance stalls in a local optimum; a short late-acceptance window keeps the walk moving
     without drifting. At N=100 long runs already reach good optima and the kick (50) does the diversification.
+75. Container restart (machine slower: the same binary and settings, v18 + `--lahc=10`, is +36 on dev60 at 45 s, 4 W / 56 L)
+    → results are only comparable within one container; all comparisons below were rerun on the new machine.
+    At 45 s a phase does ~200 IG iterations here (~375 before). Kick with LAHC: 45 s dev60 vs v19 (kick 200): kick 100
+    −11.1 (p .0007), 400 −2.1. 180 s dev40 vs v19 (kick 50): 100 −6.8, 200 −7.5 (p .017), 500 −6.8.
+    Automatic history (`--lahc=-R`: rate measured over the first 10% of each phase, history = expected iterations / R):
+    45 s R 36 +5.4, R 36 + kick 100 +9.3, R 18 + kick 100 +5.4 (vs the fixed rule); 180 s R 36 + kick 200 −10.6 vs v19
+    (≈ fixed + kick 200) → no gain; option kept, default off. Keep-in-A bonus (`--keepbonus`, keep option looks b cheaper):
+    single case, 200 iterations: b 1 +55, b 2 +91 → dropped.
+    v20 = v19 with kick 100 for N > 150 at every budget. Held-out on this machine: eval3+eval4 45 s −0.73 vs v19
+    (31 W / 1 T / 28 L, p .82); deep_u500 180 s −4.74 (28 W / 1 T / 21 L, p .13); vs the reference deep mode +77.5
+    (v19 on this machine +82.3). Not confirmed; adopted as neutral-or-better (both long-budget sets point the same way).

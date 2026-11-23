@@ -1,4 +1,10 @@
-# BEST RESULTS (updated 2026-11-23, v19)
+# BEST RESULTS (updated 2026-11-23, v20)
+
+## v20 = v19 with kick 100 for N > 150 at every budget (log 75)
+Measured on a slower machine than the v19 numbers below (same binary +36 at 45 s), so only same-machine pairs are compared:
+eval3+eval4 N=500 45 s −0.73 vs v19 (p .82); deep_u500 180 s 2761.80 vs v19 2766.54 (−4.74, p .13), vs the reference deep mode +77.5.
+N ≤ 150: identical to v19.
+
 
 ## v19 = v18 + late acceptance (LAHC) with a history that grows with the time budget — held-out eval3 + eval4, 60 cases
 History length: N > 300: 0.25 × time (45 s → 11, 180 s → 45, 600 s → 150); 150 < N ≤ 300: 0.5 × time; N ≤ 150: 2 × time

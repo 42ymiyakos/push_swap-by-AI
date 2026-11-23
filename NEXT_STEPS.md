@@ -1,7 +1,10 @@
-# NEXT STEPS (updated 2026-11-23, after v19)
+# NEXT STEPS (updated 2026-11-23, after v20)
 
 ## Current status (resume from here)
-- **Best solver: PSIG v19 (C)**: v18 + LAHC with a budget-scaled history (log 74). Held-out N=500 −21.4 vs v16, N=100 −1.8.
+- **Best solver: PSIG v20 (C)** = v19 with kick 100 for N > 150 (neutral at 45 s, −4.7 at 180 s, not significant; log 75).
+- **Machine speed changes between containers** (log 75: +36 at 45 s for the same binary). Always rerun the baseline in the
+  same container before comparing; never compare against CSVs from an earlier container.
+- Previous: PSIG v19 (C): v18 + LAHC with a budget-scaled history (log 74). Held-out N=500 −21.4 vs v16, N=100 −1.8.
   Deep sets vs the reference deep mode: N=500 600 s +35.2 (was +69.7), N=100 300 s −3.0 (same as v18).
 - Previous: PSIG v18 (C) (= v17 at default budgets; kick 50 when `--time` > 90 s)
 - Previous: PSIG v17 (C) (= v16 on random inputs; IS+swap start group for structured inputs, `--isswap`)

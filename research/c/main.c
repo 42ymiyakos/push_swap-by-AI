@@ -148,7 +148,7 @@ static void build_init(const int *a0, int n, const InitCfg *C, int ndir, OpVec *
 }
 
 int main(int argc, char **argv) {
-    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, 1, 0, 0.5, 1, 1, 1, 16, 0, 1, -1, 2, 0, -1};
+    Params P = {-1, -1, 1, 0, 3, 8, 6, 6, -1, 0, 0.5, 1, 1, 1, 16, 0, 1, -1, 2, 0, -1};
     int first = 1, seglenSet = 0, ktopOpt = -1, nlisOpt = -1, kdirOpt = -1, dualig = 8, isswapOpt = 1, swrOpt = 0, forceOpt = -1, probe = 0, bwOpt = -1, bwmOpt = -1, bwsOpt = -1;
     double probet = 2.0;
     for (; first < argc && argv[first][0] == '-' && argv[first][1] == '-'; first++) {
@@ -220,6 +220,7 @@ int main(int argc, char **argv) {
         if (cv && P.time > 0) {
             Rng rg; rng_seed(&rg, P.seed + 99); Rep bst; memset(&bst, 0, sizeof bst); int bc; long long it;
             if (P.kick < 0) P.kick = 200;
+            if (P.lahc < 0) P.lahc = 1;
             ig_run(&r, &P, &rg, &bst, &bc, &it);
             printf("ig %.0fs -> %d (%lld iters)\n", P.time, bc, it);
         }
@@ -236,6 +237,8 @@ int main(int argc, char **argv) {
     }
     if (P.time < 0) P.time = n <= 150 ? 15.0 : (n <= 300 ? 25.0 : 45.0);
     if (P.kick < 0) P.kick = P.time > 90.0 ? 50 : 200;  /* long budgets: kick more often (log 72) */
+    /* LAHC history grows with the budget (log 74): N=500 45 s -> 10, 180 s -> 45; N=100 15 s -> 30 */
+    if (P.lahc < 0) { double c = n <= 150 ? 2.0 : (n <= 300 ? 0.5 : 0.25); P.lahc = (int)(c * P.time + 0.5); if (P.lahc < 1) P.lahc = 1; }
     int nlis = 50, ktop = 3, bw = 1000, bws = 20, bc = 2, kper = 3, bwm = 100;
     int mlist4[5] = {2, 3, 4, 0, 0}, nm = 3;
     if (n > 150 && n <= 300) { int t[4] = {3, 4, 5, 6}; memcpy(mlist4, t, sizeof t); nm = 4; }

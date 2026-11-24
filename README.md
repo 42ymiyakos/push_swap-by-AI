@@ -5,14 +5,16 @@ operations as possible, always correct.
 
 ## Results (held-out inputs eval3+eval4, 60 cases per size, mean operation count; human implementation: eval2 median)
 
-| N | This repository (C version, v20) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
+| N | This repository (C version, v19; v20 = current default) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
 |---:|---:|---:|---:|
 | 100 | **351.9** (15 s) | 363.9 (about 17 s) | 608 |
 | 500 | **2817.5** (45 s) | 2967.5 (about 48 s) | 5349 |
 
 - Both sizes are significantly better than the reference normal mode: N=100 −12.0 (53 W / 7 L), N=500 −150.0 (58 W / 2 L), p < 0.0001.
 - Against the reference deep mode (~8 h per case): N=100 better at 300 s (−3.0, p .033); N=500 still +35 at 600 s.
-- Exact optimum on every input for n ≤ 8; +0.75–1.1% above the exact optimum at n = 9–11, all from B-side swaps.
+- v20 (current default) differs from v19 only for N > 150. It was measured on a slower machine, where it is −0.73 vs v19 at N=500 (not significant).
+- Exact optimum on every input for n ≤ 8 (exhaustive check); on 200-input samples for n = 9–11, +0.75–1.1% above the exact optimum, every gap case needing B-side swaps.
+- Structured "es" input (N=500): 1545 vs the reference's 1898.
 - **Overview of the design, the distance to the optimum, failed ideas and open problems: [REPORT.md](REPORT.md).**
 - Full figures and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
 

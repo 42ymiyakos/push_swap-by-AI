@@ -1,4 +1,4 @@
-# push_swap solver research — consolidated report (v20, 2026-11-24)
+# push_swap solver research — consolidated report (current default: v20, 2026-11-24)
 
 This document summarizes where the project stands: why it was started, how the research was run (an AI-driven
 research loop with a human making the strategic decisions), how the solver works, how good it is, how far it is from
@@ -104,8 +104,8 @@ Instead of guessing parameters, Claude measured where the losses came from.
 **Day 4: plateau and the optimum study.**
 - When every remaining parameter tested neutral, the human proposed measuring the distance to the optimum.
 - Claude built exact distance tables for every state up to n = 11 (479 million states).
-- To find why the remaining gap exists, it wrote a restricted-model IDA* search. The search showed that every gap case
-  needs B-side swaps. This is a concrete, testable lead for the next researcher, and it corrected one of Claude's own
+- To find why the remaining gap exists, it wrote a restricted-model IDA* search. The search showed that, in the 200-input
+  samples per n, every gap case needs B-side swaps. This is a concrete, testable lead for the next researcher, and it corrected one of Claude's own
   earlier conclusions.
 
 **Throughout:**
@@ -146,7 +146,7 @@ Several conclusions were later overturned by better evidence. The log keeps both
 - Late acceptance was rejected early (log 8, short budgets, long histories). Revisited with budget-scaled histories, it
   became the largest late-stage gain (log 74: −21 at N=500).
 - "B-side swaps are not needed" (log 69, based on windowed re-solves at N=100) was overturned by the exact small-n study
-  (log 78): every remaining small-n gap needs them.
+  (log 78): every gap case in the n = 9–11 samples needs them.
 - A dev-set gain for kick 50 at long budgets did not transfer to held-out data (log 72); the claim was downgraded.
 
 ### 2.6 What this setup was good and bad at
@@ -162,17 +162,22 @@ Several conclusions were later overturned by better evidence. The log keeps both
 
 | | N=100 | N=500 |
 |---|---:|---:|
-| This solver, default budget (15 s / 45 s), held-out eval3+eval4, mean (v19 = v20 on random inputs at these budgets) | **351.9** | **2817.5** |
-| Reference aaax8/push_swap, normal mode, same inputs | 363.9 | 2967.5 |
+| This solver **v19**, default budget (15 s / 45 s), held-out eval3+eval4, mean (machine A) | **351.9** | **2817.5** |
+| This solver **v20** (current default), same inputs, measured only on the slower machine B (v19 rerun on B: 2853.8) | = v19 (identical algorithm for N ≤ 150) | 2853.1 (−0.73 vs v19 on B, p .82) |
+| Reference aaax8/push_swap, normal mode, same inputs (machine A) | 363.9 | 2967.5 |
 | Human implementation (42 validated), eval2 median | 608 | 5349 |
 | Reference deep mode (~8 h per case), its own 50+50 deep inputs, mean | 345.58 | 2684.26 |
-| This solver on the same deep inputs, longest run (N=100: 300 s, N=500: 600 s) | **342.58** | 2719.42 |
+| This solver on the same deep inputs, longest run (N=100: 300 s v18 = v19/v20 above 90 s; N=500: 600 s v19) | **342.58** | 2719.42 |
 | Best known per case on the deep inputs (min over all our runs and the reference deep mode), mean | 338.74 | 2680.96 |
 | Proven lower bound (information-theoretic, log(N!)/log 11) | 152 | 1089 |
 
-- Random inputs, n ≤ 8: the solver returns the exact optimum on **every** permutation (checked over all n! inputs for n = 3..8).
-- n = 9, 10, 11 (200 random inputs each): mean gap to the exact optimum +0.105 / +0.145 / +0.205 operations
-  (+0.75% / +0.89% / +1.10%). Every one of the gap cases needs a swap of B (sb/ss) in all of its optimal solutions (section 6.2).
+- n ≤ 8, **exhaustive check**: the solver's output equals the exact optimum on every one of the n! inputs for n = 3..8
+  (computer-verified by enumeration for this program; not a general mathematical proof).
+- n = 9, 10, 11, **sample of 200 random inputs each** (not all inputs): mean gap to the exact optimum +0.105 / +0.145 /
+  +0.205 operations (95% CI [0.06, 0.15] / [0.09, 0.20] / [0.14, 0.27]; +0.75% / +0.89% / +1.10%). In this sample, every
+  gap case needs a swap of B (sb/ss) in all of its optimal solutions (section 6.2). This is an empirical finding, not a theorem.
+- Structured input "es" (√n descending blocks, N=500): v17 and later give **1545** vs the reference's 1898 (−353),
+  thanks to IS+swap start candidates (log 67).
 - N=100: better than the reference deep mode at 300 s (−3.0, p .033). N=500: still +35 behind the deep mode at 600 s and
   +38 behind the best known values; the gap shrinks by about 25 per doubling of time.
 - **Optimality is not claimed anywhere above n = 8.** For N ≥ 12 the only proven lower bound is the very weak
@@ -252,9 +257,11 @@ machine slower cost +36 ops at 45 s.
 | v8 | fast reinsertion | 361.5 (median) | 2884 (median) |
 | v13 | kick | 356.5 (median) | 2849.5 (median) |
 | v16 | dual start + dualig | 353.7 | 2838.9 |
-| v19 / v20 | late acceptance (+ kick 100) | **351.9** | **2817.5** |
+| v19 | late acceptance | **351.9** | **2817.5** |
+| v20 | + kick 100 for N > 150 (measured on slower machine B) | = v19 | 2853.1 on B (v19 on B: 2853.8; −0.73, p .82) |
 
-Paired against the reference: N=100 −12.0 (53 W / 7 L), N=500 −150.0 (58 W / 2 L), both p < 0.0001.
+Rows up to v19 were measured on machine A; machine B is about 36 operations worse at N=500, 45 s for the same binary,
+so the v20 row is only comparable with the v19 rerun on B. Paired v19 against the reference (machine A): N=100 −12.0 (53 W / 7 L), N=500 −150.0 (58 W / 2 L), both p < 0.0001.
 
 ### 5.2 Time–quality curve (the reference's own deep inputs; reference deep ≈ 8 h per case)
 | N | Budget | Ours (mean) | vs reference deep |
@@ -263,7 +270,7 @@ Paired against the reference: N=100 −12.0 (53 W / 7 L), N=500 −150.0 (58 W /
 | 100 | 60 s | 347.94 | +2.4 |
 | 100 | 300 s | **342.58** | **−3.0** (p .033) |
 | 500 | 45 s | 2815.0 | +130.7 |
-| 500 | 180 s | 2760.4 (v20 on a slower machine: 2761.8) | +76.2 |
+| 500 | 180 s | 2760.4 (v19, machine A); v20 on machine B: 2761.8 (−4.74 vs v19 rerun on B, p .13) | +76.2 |
 | 500 | 600 s | 2719.4 | +35.2 |
 
 ## 6. Distance to the optimum
@@ -279,18 +286,25 @@ n=11 has 479 M states (one byte each) and builds in about 17 min on 4 vCPU. Stat
 | 5 | 4.8583 | 8 | identical on all inputs |
 | 6 | 7.0597 | 10 | identical on all inputs |
 | 7 | 9.3062 | 13 | identical on all inputs |
-| 8 | 11.5904 | 16 | identical on all 40 320 inputs |
-| 9 | 13.9110 | 19 | +0.105 (+0.75%), 200 random inputs |
-| 10 | 16.2756 | 22 | +0.145 (+0.89%), 200 random inputs |
-| 11 | 18.6816 | 25 | +0.205 (+1.10%), 200 random inputs |
+| 8 | 11.5904 | 16 | identical on all 40 320 inputs (exhaustive) |
+| 9 | 13.9110 | 19 | +0.105 (+0.75%), sample of 200 inputs |
+| 10 | 16.2756 | 22 | +0.145 (+0.89%), sample of 200 inputs |
+| 11 | 18.6816 | 25 | +0.205 (+1.10%), sample of 200 inputs |
+
+**Levels of evidence in this section.**
+(1) The optimum columns (mean and max over all n! inputs) are exact. They come from an exhaustive BFS over every state,
+so they are computational results by enumeration, which rely on the correctness of optbfs.c.
+(2) "Identical on all inputs" for n ≤ 8 is an exhaustive check of this solver version against those tables.
+(3) The n = 9..11 solver gaps are **estimates from 200 random inputs per n** (95% CI given in section 3). They are not
+statements about all inputs. None of these is a pen-and-paper mathematical proof.
 
 For n = 9..11, the solver at 1 s and at the default 15 s gives the same mean: more time does not close the gap.
 Every output was verified to end sorted.
 
 ### 6.2 Where the small-n gap comes from (optbfs `model` mode, IDA* with the exact table as heuristic)
 Shortest solutions under two restrictions, on the same 200 inputs per n:
-- **M1**: each value is pushed to B at most once. The optimum is unchanged in all 600 cases. Multiple round trips are
-  never needed at n ≤ 11.
+- **M1**: each value is pushed to B at most once. The optimum is unchanged in all 600 sampled cases. In this sample,
+  multiple round trips were never needed. Whether this holds for all inputs of n ≤ 11 was not checked.
 - **M2**: M1 and no sb/ss, which is the solver's representation before peephole. The optimum is lost in 33 / 50 / 62 of 200
   cases (mean +0.17 / +0.26 / +0.33).
 
@@ -300,11 +314,11 @@ Shortest solutions under two restrictions, on the same 200 inputs per n:
 | 10 | 28 | **28** | 22 |
 | 11 | 38 | **38** | 24 |
 
-**Every remaining gap case at n = 9..11 is one where every optimal solution swaps B.** Inside the solver's own model
+**In the 600 sampled inputs, every remaining gap case at n = 9..11 is one where every optimal solution swaps B.** Inside the solver's own model
 (M2) the solver is optimal in all cases but one, and often beats M2 thanks to the peephole.
 This contradicts the earlier N=100 conclusion (log 69: "no evidence for B-side swaps"). That test only looked for local,
 ≤ 10-op windows inside a finished solution. The small-n evidence says B-side swaps matter, but they must be planned
-inside the search, not patched in afterwards. The share of such cases grows with n (17% → 25% → 31%).
+inside the search, not patched in afterwards. The share of such cases grows with n in the sample (17% → 25% → 31%).
 
 ### 6.3 N=100 and N=500
 - **Best known values** (deep inputs, mean of the per-case minimum over all our runs and the reference deep mode):
@@ -339,7 +353,7 @@ inside the search, not patched in afterwards. The share of such cases grows with
 ## 8. Open problems / where to look next
 1. **B-side swaps inside the search** (strongest evidence, section 6.2). The representation has A2A (sa) but no B2B.
    A query type "swap two adjacent values in B" (sb, merged with sa into ss when both happen), with a DP-reinsertion
-   option analogous to A2A, would cover every remaining small-n gap case. Cheap first check: rerun the 6.2 table with the
+   option analogous to A2A, would cover every gap case found in the small-n sample. Cheap first check: rerun the 6.2 table with the
    new query type and confirm that M2 then equals the optimum.
 2. **Search stagnation at N=500**: the gain per time doubling is falling. Population or elite-based restarts, path relinking
    between elites, or larger structured destroys (whole chunks, whole BOrder blocks) are untested at long budgets.
@@ -350,8 +364,9 @@ inside the search, not patched in afterwards. The share of such cases grows with
    fixed K, or an LP over the query model) would give the first real optimality-gap numbers for N=100/500.
 5. **Exact data beyond n = 11**: n = 12 needs 6.2 G states (≈ 6 GB). That is feasible with a bit-packed table on a larger
    machine and would extend the curve in 6.1.
-6. **Structured inputs**: the reference still wins on one worst-case family (es: 1968 vs 1898). C++ IS+swap gives 1596 there,
-   but in C it is not selected among the start candidates (67).
+6. **Structured inputs**: on the five worst-case families tested (log 67) the solver now beats the reference on all of them
+   at N=500 (es: 1545 vs 1898 since v17's IS+swap starts; v16 gave 1968). Only five families were tried; an adversarial
+   search for inputs where the solver is weak (with a short-time proxy) is still open.
 
 ## 9. Reproducing
 - Solver: `cd research/c && make && ./push_swap --time=15 <numbers>`.

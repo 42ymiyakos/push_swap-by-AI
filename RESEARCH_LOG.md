@@ -183,3 +183,12 @@
 77. Construction budget with LAHC (dev60, 45 s; construction takes ≈ 12.7 s of 45 s): default rerun +0.28 (noise check),
     kdir 2 −0.12, kdir 1 +5.7, bw 300 +3.5 (all p > .35). gprof (30 s run): beam_solve 27%, solve_slots 27%,
     chunk_construct 22%, prep_b 6%, lb_ll 5%. → no gain from moving time between construction and IG.
+78. Distance to optimum, final study (tools/optbfs.c: `stats` over all n! inputs, `model` = IDA* under restrictions).
+    Exact mean / max optimum: n=3 1.1667/2, 4 2.875/5, 5 4.8583/8, 6 7.0597/10, 7 9.3062/13, 8 11.5904/16,
+    9 13.9110/19, 10 16.2756/22, 11 18.6816/25 (479 M states, 17 min). v20 equals the optimum on all inputs for n=3..8.
+    200 random inputs, n=9/10/11: v20 +0.105/+0.145/+0.205 at both 1 s and 15 s (time does not help).
+    Restricted optimum: M1 (each value pushed at most once) = optimum in 600/600 cases; M2 (M1 + no sb/ss) > optimum
+    in 33/50/62 cases. All 20/28/38 cases where v20 > optimum are M2 > optimum cases; v20 < M2 in 13/22/24 (peephole).
+    → at n ≤ 11 the whole remaining gap is B-side swaps that the representation cannot plan (contradicts the windowed
+    N=100 test of entry 69, which only looked for local patches). Best known on the deep sets (min over all runs and
+    the reference deep mode): N=100 338.74, N=500 2680.96. Consolidated write-up: REPORT.md. Data: bench/runs/optimum/.

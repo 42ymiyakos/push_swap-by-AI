@@ -1,6 +1,8 @@
-# NEXT STEPS (updated 2026-11-23, after v20)
+# NEXT STEPS (updated 2026-11-24, after v20 and the optimum study)
 
 ## Current status (resume from here)
+- **Start with [REPORT.md](REPORT.md)**: design overview, distance to optimum, failed ideas, ranked open problems.
+  Top lead (log 78): every small-n gap case needs B-side swaps (sb/ss) → add a B2B query type to the representation.
 - **Best solver: PSIG v20 (C)** = v19 with kick 100 for N > 150 (neutral at 45 s, −4.7 at 180 s, not significant; log 75).
 - **Machine speed changes between containers** (log 75: +36 at 45 s for the same binary). Always rerun the baseline in the
   same container before comparing; never compare against CSVs from an earlier container.

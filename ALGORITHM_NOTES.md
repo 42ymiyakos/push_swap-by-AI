@@ -1,5 +1,7 @@
 # ALGORITHM NOTES
 
+Covers derivations up to v8. Later additions (dual start, dualig, kick, LAHC) and the current design overview: [REPORT.md](REPORT.md) section 2.
+
 ## Problem facts
 - 11 ops; between two pushes only rotations/swaps happen, so with fixed "which element / which slot"
   the rotation cost of a push is exactly 1 + min(max(ra,rb), max(rra,rrb), ra+rrb, rra+rb)  (proven: the

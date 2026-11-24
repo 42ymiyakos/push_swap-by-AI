@@ -4,7 +4,10 @@
  *   optbfs N TABLE build                      build and save the table (uint8 per state)
  *   optbfs N TABLE stats                      exact optimum over all N! inputs (B empty): mean, max, histogram
  *   optbfs N TABLE analyze < pairs            each input line: "v0 v1 ... v(N-1) | op op op ..."
- *     prints per case: opt, ours, and every move whose distance does not drop by 1 (wasted), with op and context. */
+ *     prints per case: opt, ours, and every move whose distance does not drop by 1 (wasted), with op and context.
+ *   optbfs N TABLE model < perms              each line: "v0 ... v(N-1)"; shortest solution under model restrictions
+ *     (IDA* with the exact table as heuristic): M1 = every value pushed to B at most once,
+ *     M2 = M1 and no sb/ss (the solver's representation: single trip per value, swaps only in A). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,12 +53,29 @@ static void apply(int *q, int *na, int o) {
 }
 static uint64_t idx(const int *q, int na) { return prank(q) * (uint64_t)(N + 1) + (uint64_t)na; }
 
+static uint8_t *D;
+/* depth-first search with bound; pushed = bitmask of values already pushed to B */
+static int ida(const int *q, int na, int pushed, int g, int bound, int model) {
+    int d = D[idx(q, na)];
+    if (d == 0) return 1;
+    if (g + d > bound) return 0;
+    for (int o = 0; o < NOPS; o++) {
+        if (model >= 2 && (o == SB || o == SS)) continue;
+        if (o == PB && (na == 0 || (pushed >> q[0] & 1))) continue;
+        int t[16], ta = na; memcpy(t, q, sizeof(int) * N);
+        int np = pushed; if (o == PB) np |= 1 << q[0];
+        apply(t, &ta, o);
+        if (ida(t, ta, np, g + 1, bound, model)) return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 4) { fprintf(stderr, "usage: optbfs N TABLE build|analyze\n"); return 1; }
     N = atoi(argv[1]);
     FACT[0] = 1; for (int i = 1; i <= 12; i++) FACT[i] = FACT[i - 1] * i;
     uint64_t S = FACT[N] * (uint64_t)(N + 1);
-    uint8_t *D = malloc(S);
+    D = malloc(S);
     if (!strcmp(argv[3], "build")) {
         memset(D, 255, S);
         uint32_t *cur = malloc(sizeof(uint32_t) * S + 16), *nxt = malloc(sizeof(uint32_t) * S + 16);
@@ -88,6 +108,23 @@ int main(int argc, char **argv) {
         printf("n %d inputs %llu mean_opt %.4f max_opt %d hist", N, (unsigned long long)FACT[N], sum / FACT[N], mx);
         for (int d = 0; d <= mx; d++) printf(" %d:%lld", d, h[d]);
         printf("\n");
+        return 0;
+    }
+    if (!strcmp(argv[3], "model")) {
+        char line[4096]; long long cases = 0, sOpt = 0, sM1 = 0, sM2 = 0, g1 = 0, g2 = 0;
+        while (fgets(line, sizeof line, stdin)) {
+            int q[16]; char *p = line, *e; int k = 0;
+            for (; k < N; k++) { q[k] = (int)strtol(p, &e, 10); if (e == p) break; p = e; }
+            if (k < N) continue;
+            int opt = D[idx(q, N)], res[2];
+            for (int m = 0; m < 2; m++) {
+                for (int bound = opt;; bound++) { if (ida(q, N, 0, 0, bound, m + 1)) { res[m] = bound; break; } }
+            }
+            printf("opt %d m1 %d m2 %d\n", opt, res[0], res[1]);
+            cases++; sOpt += opt; sM1 += res[0]; sM2 += res[1]; g1 += res[0] > opt; g2 += res[1] > opt;
+        }
+        printf("cases %lld mean opt %.3f m1 %.3f (%lld above opt) m2 %.3f (%lld above opt)\n", cases,
+               (double)sOpt / cases, (double)sM1 / cases, g1, (double)sM2 / cases, g2);
         return 0;
     }
     char line[1 << 16];

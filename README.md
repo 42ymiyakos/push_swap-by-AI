@@ -3,16 +3,18 @@
 An autonomous research project to build the strongest possible push_swap solver: as few
 operations as possible, always correct.
 
-## Results (held-out inputs eval3+eval4, 60 cases per size, median operation count; human implementation measured on eval2)
+## Results (held-out inputs eval3+eval4, 60 cases per size, mean operation count; human implementation: eval2 median)
 
-| N | This repository (C version) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
+| N | This repository (C version, v20) | Reference [aaax8/push_swap](https://github.com/aaax8/push_swap) | Human implementation (42 validated) |
 |---:|---:|---:|---:|
-| 100 | **354** (about 15 s) | 363.5 (about 17 s) | 608 |
-| 500 | **2833** (about 44 s) | 2967.5 (about 48 s) | 5349 |
+| 100 | **351.9** (15 s) | 363.9 (about 17 s) | 608 |
+| 500 | **2817.5** (45 s) | 2967.5 (about 48 s) | 5349 |
 
-- n ≤ 8 is solved optimally by exhaustive search (n=3: at most 2 ops, n=5: at most 8 ops).
-- Both sizes are significantly better than the reference: N=500 by 128.6 operations on average (p < 0.0001, 58 wins out of 60), N=100 by 10.2 operations (p < 0.0001, 55 wins, 5 losses).
-- Full figures, conditions and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
+- Both sizes are significantly better than the reference normal mode: N=100 −12.0 (53 W / 7 L), N=500 −150.0 (58 W / 2 L), p < 0.0001.
+- Against the reference deep mode (~8 h per case): N=100 better at 300 s (−3.0, p .033); N=500 still +35 at 600 s.
+- Exact optimum on every input for n ≤ 8; +0.75–1.1% above the exact optimum at n = 9–11, all from B-side swaps.
+- **Overview of the design, the distance to the optimum, failed ideas and open problems: [REPORT.md](REPORT.md).**
+- Full figures and per-case data: [BEST_RESULTS.md](BEST_RESULTS.md) and `research/bench/runs/`.
 
 ## Quick start (C version)
 
@@ -44,7 +46,7 @@ deterministic run. Invalid input prints `Error`. This is not a norminette-compli
 4. **Post-processing**: replace short windows by shorter equivalent sequences found with meet-in-the-middle
    BFS (peephole).
 
-Details: [ALGORITHM_NOTES.md](ALGORITHM_NOTES.md)
+Details: [REPORT.md](REPORT.md) (current design), [ALGORITHM_NOTES.md](ALGORITHM_NOTES.md) (derivations)
 
 ## Layout
 

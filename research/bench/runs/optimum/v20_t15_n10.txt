@@ -1,0 +1,200 @@
+7 8 6 3 5 4 2 9 0 1 | pb pb pb rr pb rr pb rb pa pa pa pa rra rra pa rra rra
+3 6 9 7 8 5 0 2 4 1 | rra pb pb ra pb ra ra pa ra sa ra sa ra sa pa rra pa rra
+5 1 9 7 0 8 4 6 2 3 | ra pb pb pb pb pb rrr sa rrr rrr pa rr pa pa rr pa ra pa
+0 5 3 2 1 9 8 6 4 7 | pb pb rb pb rb pb rb pb sa rr rr sa pa sa pa pa pa pa
+3 1 0 6 9 5 8 7 2 4 | pb pb pb pb pb rr sa pa rrr rrr pa rra pa rr pa pa
+9 0 2 8 7 6 5 1 3 4 | pb pb pb pb pb sa ra ra pa ra pa ra pa sa pa pa ra
+7 8 3 2 1 6 0 4 9 5 | ra ra pb pb rr pb pb rr pb rr pa rra rra pa pa rra pa pa ra
+7 3 4 9 2 0 6 8 1 5 | ra pb pb pb pb pb rrr sa rrr pa pa rrr pa rr pa sa pa
+2 4 8 0 5 9 6 1 3 7 | ra ra pb pb rr pb ra pb sa rr pa pa rr ra sa pa pa
+4 0 7 6 1 5 3 8 9 2 | ra pb pb rr pb pb pb rrr pa ss pa rra pa rra pa pa
+2 0 5 9 3 4 1 7 8 6 | rra pb pb pb pb rrr rra pa pa rra pb rrr rra pa pa pa
+7 8 4 6 9 3 2 0 1 5 | ra ra pb pb ra pb rb pb rr ra pa sa pa pa pa rra rra
+3 7 5 9 4 0 6 8 2 1 | ra pb pb pb rr pa ra pb rr pa rr ra sa pa pa ra
+3 1 7 5 2 8 9 4 6 0 | pb rra pb pb ra pb rb pb rrr rra pa rrr pa pa pa pa
+1 8 3 4 6 7 2 5 0 9 | rra pb pb rra pb pb pb rra sa pa rrr pa pa rr ra pa pa
+4 8 0 9 5 3 1 7 2 6 | pb ra sa ra ra pb pb rr sa ra sa pa pa pa rra rra rra
+1 9 5 4 7 2 8 3 0 6 | pb pb rr pb rr pb rr sa rr rr sa pa rra pa pa rra pa ra
+4 0 3 2 6 5 9 7 8 1 | pb ra sa ra ra pa ra sa ra ra pb ra ra sa pa ra
+2 1 3 9 7 6 0 5 8 4 | pb pb rb pb pb sa ra ra pb sa rr sa pa ra pa pa pa pa
+0 3 9 5 8 1 2 4 7 6 | pb pb sa pb sa rra rra sa pa rra pa rra rra pa
+4 9 6 3 0 5 7 2 8 1 | rra pb pb rr pb sa rrr rrr rra pb rrr pa rrr pa rra pa pa rra
+9 0 5 8 6 3 2 1 4 7 | pb pb pb sa rra sa pa rra rra pb rra rra sa pa pa pa ra
+6 9 7 0 1 2 8 5 3 4 | rra rra rra pb rra pb rr ra pa ra ra sa ra pa ra ra
+4 3 0 6 7 5 8 1 9 2 | sa ra ra pb pb sa ra pa ra ra ra sa ra pa
+1 8 5 2 7 4 6 0 3 9 | pb ra pb rr pb rr ra pb pb sa rrb pa rrr pa rra pa rrr pa pa
+7 4 8 2 1 0 6 9 3 5 | ra pb ra pb pb pb pb rra rra pa rrr pa rrr pa rb pa pa
+0 9 1 3 5 8 6 4 2 7 | sa rra rra pb rra pb rrr pb rra sa pa rrr pa rra pa rra rra
+7 9 1 6 0 5 8 2 3 4 | pb pb pb rb pb pb rr pa rr pa ra ra pa pa pa ra
+2 1 5 6 4 3 7 9 8 0 | sa ra ra pb pb sa rr ra pa ra pa ra ra sa ra ra
+0 5 6 4 7 2 3 1 9 8 | ra ra ra pb ra pb pb rrb pb sa rr ra ra pa pa pa pa rra
+1 3 7 6 5 8 4 9 2 0 | rra rra pb rra rra pb rra rra pb rra rra sa pa pa rra pa rra rra
+5 9 1 0 8 6 7 2 3 4 | ra pb pb pb sa ra sa rr rr pa rr pa pa
+7 1 9 5 0 4 3 8 2 6 | ra pb ra pb pb rrb pb pb rra ss rra rrr pa pa pa rra pa pa
+7 8 5 3 6 9 4 1 0 2 | pb pb pb ra pb sa rr pa rr pa pa ra ra pa ra ra sa
+2 7 9 5 0 4 1 8 3 6 | pb ra pb pb rb pb pb sa rrr rra pa pa rrr pa rra pa pa ra
+0 1 3 8 2 4 6 9 7 5 | pb pb pb rrr rra rra pb sa rrr sa rrr pa rra pa pa ra pa
+8 5 4 3 0 9 1 6 2 7 | ra pb pb pb pb rr ra sa rr pa pa ss pa rra rra pa
+0 9 4 6 8 1 3 5 7 2 | rra pb pb pb pb rra sa rra pa rrr pa rrr pa pa ra
+0 4 3 9 6 2 8 1 7 5 | pb pb rra pb pb rr pb pb sa rr sa pa pa pa rb pa pa rra pa
+0 3 7 2 4 1 8 9 6 5 | pb pb ra pb pb pb rr ra sa pa pa pa ss pa pa
+2 3 5 8 4 7 0 6 9 1 | ra ra pb pb rr pa ra pb pb rr pa ra pa ra ra pa
+8 1 0 7 2 3 9 4 5 6 | pb pb pb ra ra sa rrr pa ra sa rr pa pa
+4 2 6 8 5 3 1 0 7 9 | ra pb ra ra pb pb pb pb rrr sa rrr pa rrr pa pa rb pa pa
+0 6 5 3 8 1 9 2 4 7 | pb ra pb pb sa pb rrr rrr sa pa rrr pa rrr pa pa
+2 7 8 9 4 0 1 3 6 5 | pb ra ra ra pb ra ra ra sa pa rra pa rra rra
+3 0 2 5 6 1 7 9 4 8 | ra pb pb rr ra pb rr pb sa ra sa pa rr pa pa pa
+6 1 4 5 9 0 7 8 2 3 | pb pb rr ra pa ra pb pb rr rr pa pa pa ra
+3 2 0 7 5 9 4 8 1 6 | pb pb rb pb rr pb sa pb ss rra rra pa pa pa pa rra pa
+9 5 0 7 8 4 6 2 3 1 | rra pb pb pb pb rrr rrr pb pb rrr pa rra pa pa pa ra pa pa
+1 9 5 2 6 4 3 7 0 8 | pb ra ra pb ra pb pb ra pb rr rr pa rrb pa pa pa pa
+8 4 0 9 3 6 5 7 2 1 | rra rra pb pb rr pb pb rr ra sa pa rra pa pa pa
+2 3 1 0 4 6 9 7 8 5 | pb pb pb rb pb pb sa rra ss rr pa pa pa pa pa
+4 0 9 3 5 6 8 1 2 7 | pb pb pb pb pb rrr ss pa pa pa rra rra pa ra pa
+0 3 1 5 2 6 7 9 8 4 | pb ra pb ra pb ra ra sa ra ra sa pa pa pa
+4 3 9 7 2 6 8 1 5 0 | pb rra pb pb pb ss pb ss rrr pa pa pa rra pa ra pa
+4 8 7 2 3 1 0 9 5 6 | pb sa ra ra pb pb rrb pb sa rr ra pa pa pa pa rra
+8 5 1 6 9 3 0 7 4 2 | pb ra pb rr pb pb pb rr sa pa sa pa pa ra ra pa pa
+4 6 7 8 2 0 3 1 5 9 | rra pb rra rra pb sa rra rra pb rrr pa rr pa pa
+2 4 3 1 6 7 9 5 0 8 | rra pb rra rra pb rrr pa rra rra pa rra pb rra rra sa rra pa rra
+4 6 9 3 7 1 2 5 8 0 | pb pb sa rrr pb pb sa rrr sa pa rrr pa pa rra rra pa
+7 9 2 3 4 6 0 5 1 8 | rra rra pb sa rra rra pb rra sa rrr rra rra pa pa
+5 4 9 2 1 8 6 3 7 0 | pb pb ra sa ra ra pb sa rr pa ra pa ra ra ra pa ra sa ra
+7 2 1 0 8 6 3 5 9 4 | ra pb pb pb sa rra sa rra rra pb rra sa rrr pa pa rr pa pa
+9 3 4 8 7 0 5 1 6 2 | pb ra ra pb pb pb ra sa rr pa ra pa rr pa pa ra
+6 3 1 7 0 8 4 2 5 9 | rra pb ra pb pb rr pb rr sa pa pa ra sa pa pa
+2 8 7 0 6 4 9 1 5 3 | pb pb pb pb rr pa ra pa ra pb ra ra sa pa sa pa rra pa
+5 9 2 8 3 7 4 0 6 1 | pb pb rr pb rr pb rr pa rr sa rr pa rr pa ra pa ra
+7 4 1 9 0 8 5 3 6 2 | rra pb ra pb pb pb pb rr pa ra ss pa ss pa pa pa
+8 5 6 3 9 2 7 1 4 0 | pb rra pb rr ra pb rb pb pb rr pa pa rr ra ra pa pa rra pa
+2 3 6 7 1 4 8 5 9 0 | pb ra ra ra pb pb sa rra sa rra sa pa rrr pa pa rra
+1 0 3 4 2 9 8 7 6 5 | pb pb pb pb pb pb sa ra ra pa rr sa pa pa pa rr pa pa rra
+7 4 5 6 0 9 3 1 2 8 | rra pb pb rrr rra pb rra sa pa rra rra pa pa ra ra sa ra
+4 7 1 8 5 6 2 3 9 0 | ra ra pb ra pb pb rrb pb pb rrr rrr pa pa rra pa pa pa rra
+9 3 7 0 8 5 2 4 6 1 | rra pb pb pb ra pb rr sa ra sa pa rra pa ra pa pa
+1 2 8 4 0 7 3 5 9 6 | pb pb ra pb pb rra sa ra rr pb ss ra pa pa pa pa pa
+6 7 8 9 5 3 2 1 4 0 | rra pb rra rra pb rra pb rra pb rra sa pa pa pa pa
+6 2 3 4 0 5 1 8 7 9 | pb ra ra ra pb rr pa ra pb sa ra ra ra pa pa
+0 9 6 3 4 2 8 5 1 7 | pb pb ra ra ra pb pb ra pb sa rr ra pa ra pa pa rr pa pa
+4 0 5 1 9 2 8 6 7 3 | ra pb ra pb pb pb sa ra sa ra ra pa pa ra pa pa
+9 6 1 0 5 7 2 8 4 3 | pb ra pb pb rra sa rra rra sa rra rra sa rr pa pa ra pa
+0 1 6 8 2 7 9 3 5 4 | pb pb ra sa pb sa rra rra rra sa rra pa pa pa
+4 8 1 0 6 2 3 5 9 7 | pb pb rb pb pb pb rra pb rrr pa pa pa rrr pa rrr rra pa pa
+2 0 6 8 5 9 7 4 1 3 | pb pb pb rr pb sa rrr sa pa pa rra rra pb rrr sa pa pa pa
+0 1 7 3 8 4 5 6 9 2 | pb pb pb sa rra sa rra sa pa ra ra ra pa pa
+4 3 1 5 8 7 2 6 9 0 | pb ra pb ra sa ra sa pb sa rra sa rrr pa rra pa pa rra
+0 7 9 2 3 6 5 1 4 8 | pb rra rra pb rra pb sa rrr rrr sa pa rrr rra pa pa
+2 7 4 5 1 9 0 8 3 6 | pb ra pb pb pb ra sa rrr sa rrr rrr pa pa rra pa pa rra
+2 4 7 9 5 6 3 8 1 0 | rra pb pb pb rrr pb rrr rra pb sa rrr rra pa pa pa pa pa
+4 1 6 2 9 5 8 7 0 3 | ra pb ra pb pb pb sa rra pa rrr rrr pa pa rra pa ra
+1 9 0 4 3 7 2 8 6 5 | pb rra pb rrr rra rra pb sa rrr sa pa rra rra sa pa pa rra
+7 9 3 5 8 2 6 0 1 4 | pb pb pb rr pb pb rrr rra pa pa rrr rra pa ra pa ra pa ra
+1 7 9 3 2 0 4 6 8 5 | pb rra pb rra sa rra pa rra rra pb rrr rra sa pa pa
+2 9 8 5 0 1 4 6 7 3 | pb rra pb sa ra ra sa ra sa ra sa pa pa rra rra
+2 9 4 0 8 1 3 5 6 7 | pb pb pb sa rra rra rra pa rrr pa rra rra pa ra
+0 5 8 9 6 4 1 2 7 3 | pb pb rr ra pb pb ra rr ss rr pa pa pa rra rra rra pa
+8 4 1 6 7 2 0 3 5 9 | pb pb pb pb pb sa rrr pa pa pa rrr pa rra rra pa rra
+0 2 8 7 6 4 5 9 3 1 | pb pb pb pb sa ra sa ra ra pa ra pa ra ra sa pa sa pa
+3 1 2 5 4 8 0 7 9 6 | pb rra pb rrr rra rra pb rrr sa pa rrr rra sa pa rra rra pa
+9 4 7 1 3 0 2 6 8 5 | ra pb pb pb pb rrr rra pb rrr pa rra pa pa pa rra pa rra
+0 4 3 1 6 5 7 9 8 2 | pb sa ra ra pb sa ra ra ra sa ra ra pa pa
+2 8 1 7 6 3 0 9 4 5 | pb pb pb sa rr ra pa ra pb pb rr pa pa pa pa
+4 0 6 8 3 5 9 1 7 2 | pb pb rra pb rrr sa rrr pb rrr pb rrr pa rra pa ra pa pa pa
+3 8 4 6 1 5 9 2 0 7 | rra pb ra pb rr pb pb rr pa ra pa ra pa ra ra sa pa sa
+2 1 0 4 6 3 5 9 8 7 | pb rra pb rra rra sa pa rra rra pb rra sa rra pa pa rra rra sa
+7 9 1 3 2 6 5 8 4 0 | rra rra pb pb rrr sa rra rra sa pa rra rra sa rra pa
+3 7 0 5 9 6 8 2 1 4 | rra sa ra ra pb pb rr pb rr pa rr ra pa ra sa pa
+2 7 1 8 3 0 5 9 4 6 | pb ra pb rr pb pb sa rr sa pa pa pa pa
+9 3 4 8 2 5 7 6 1 0 | ra ra ra pb pb ra sa rr ra pa ra pb sa rr ra pa pa rra
+4 3 0 7 8 6 1 2 9 5 | ra pb pb pb sa ra pa ra ra pb pb ra sa rrb pa pa pa pa
+9 0 3 7 2 1 4 6 8 5 | rra pb ra ra ra ra pb pb pb rrr sa pa pa rrr pa pa rra
+8 3 0 9 5 7 6 2 4 1 | pb pb rrr pb pb pb ra sa rrr rra pa rrr pa ra pa rr pa pa
+8 4 9 7 6 2 3 1 0 5 | ra pb ra pb pb pb pb sa rrr rrr pa rrb pa rra pa pa pa rra rra
+6 5 0 1 2 4 9 8 7 3 | pb rra rra pb pb pb rrr rrr sa pa pa pa rra pa rra rra rra
+6 0 1 5 7 2 4 3 9 8 | pb ra ra pb pb rr sa ra ra sa pa ra pa ra pa ra ra ra
+8 5 0 2 4 9 7 6 3 1 | ra ra pb pb rr pb sa rr rr pb pb rr sa pa pa pa rr pa pa
+3 2 4 5 9 6 7 8 1 0 | sa ra ra ra ra pb ra ra ra sa pa ra
+8 2 3 0 5 6 7 1 9 4 | pb pb ss pb rrr sa pa rrr rra pa ra sa ra pa
+9 2 3 6 5 4 8 0 1 7 | pb rra pb ra ra pb sa ra ra pa ra pa ra ra pa ra
+0 1 4 2 3 8 6 5 7 9 | ra ra pb ra ra pa ra pb sa ra ra ra pa ra ra
+5 2 1 4 8 9 6 0 7 3 | pb pb pb pb rr rr pb ra ss rr pa pa pa rrr pa pa rra
+9 8 0 7 3 1 5 6 2 4 | pb pb pb pb sa pb rra sa rra pa pa rr pa ra pa ra pa
+9 1 6 4 7 8 0 3 2 5 | pb pb sa rra sa rra rra sa pa rra pa ra
+7 1 0 9 2 5 8 6 3 4 | pb pb pb pb pb ra sa ra rrb pa ra ra pa pa rr pa pa
+3 9 4 5 1 2 8 7 6 0 | ra pb ra ra pb pb pb sa ra ra pa ra ra pa pa rra pa ra
+0 2 8 6 1 9 3 4 5 7 | pb pb sa rra sa ra ra ra sa ra pa sa pa
+9 5 8 0 2 1 6 7 3 4 | pb ra pb pb pb pb rr ra pa rrb pa pa pa ra pa ra
+3 6 7 2 8 9 5 1 0 4 | pb ra ra pb rr ra pb pb rr pa sa pa pa pa rra
+1 7 0 2 4 3 6 8 5 9 | pb pb rrr rra pb rrr pa rra pa rra rra sa rra pa rra
+3 7 5 4 6 0 1 2 9 8 | rra rra pb pb rr pb sa rr ra ra pa pa pa ra ra ra
+6 9 7 0 4 5 3 2 8 1 | pb sa rra pb rrr sa pa rra pb rra rra sa rra sa pa pa rra
+3 8 5 6 1 0 4 9 2 7 | pb ra pb pb pb pb rrb pb rrr rrr pa pa pa pa rrr pa pa
+4 9 6 1 8 7 5 0 2 3 | ra pb pb pb rb pb sa rr pa rr ra pa sa pa ra pa ra
+7 1 2 9 5 3 0 4 6 8 | pb pb pb ra pb sa rrr rra pa rra pa rra rra pa pa rra
+3 9 4 5 8 0 6 7 2 1 | ra pb ra ra pb pb ra ra sa pa pa ra pa ra
+5 8 1 9 2 6 4 3 7 0 | pb rra pb ra pb rr rr sa ra sa pa sa rra sa rra pa pa
+5 4 9 7 8 3 2 0 6 1 | pb rra pb pb sa ra sa rrr rra pa pa rra pb rrr rra sa pa pa
+8 5 6 3 0 2 4 7 1 9 | pb pb pb pb rrr pa rra pb rrr rrb pa pa rrr pa rra pa rra
+2 0 3 8 1 7 5 9 4 6 | pb pb pb pb pb rr pa ra ss rr sa pa pa pa pa
+4 6 5 3 0 9 7 1 8 2 | ra sa ra ra pb pb pb ra pb rr pa rr pa sa pa pa
+5 0 4 6 1 7 2 8 9 3 | pb pb rr pa ra ra pb ra pb ra ra pa pa pa
+9 5 4 2 0 3 7 6 8 1 | pb pb pb ra pb rr ss pa pa rrr rra rra pa pa ra
+3 5 1 8 9 2 6 4 7 0 | pb pb pb rra pb rrr rra pb rrr pa pa pa rrr pa pa
+6 7 1 5 9 3 2 4 0 8 | pb pb pb pb rrr rrr pb rb pa pa pa rra rra rra sa pa pa
+5 6 8 1 4 0 9 2 7 3 | pb pb ra pb pb sa rr ra ra sa rr pa pa pa rra rra pa rra
+3 9 6 2 5 7 0 8 1 4 | pb pb sa pb sa rrr pa pa rra rra rra sa ra pa ra
+9 3 4 7 2 0 6 8 5 1 | rra rra pb pb rrr rra rra pb rrr pb rrr sa pa rra rra pa pa pa
+7 1 2 5 0 8 4 9 6 3 | ra pb pb pb pb rr pb ra ss ra pa pa rra pa pa pa
+8 1 4 7 9 3 0 5 6 2 | pb pb pb rrr pb rr pa ra ra sa ra pa ss pa pa rra
+0 1 6 8 7 3 4 2 5 9 | pb rra pb pb ra sa rr ra pa rr ra sa rra sa pa pa
+6 0 7 9 4 8 5 1 2 3 | pb pb pb pb rr ss rr pa pa rr rr ra pa ra pa
+1 6 0 3 2 5 4 7 8 9 | ra pb pb rr pb rr pa sa rra sa rrr pa rra pa
+5 3 6 7 0 1 4 2 8 9 | sa rra pb rra pb rra pb rra sa pa rrr rra pa pa ra ra
+3 4 6 5 8 2 9 7 1 0 | ra ra sa ra ra pb pb sa rr pa ra ra sa ra pa sa rra
+3 0 1 2 8 4 7 6 9 5 | pb pb pb pb rrr pb rra sa rra rra sa pa rra pa pa pa pa
+2 1 4 5 7 0 8 6 3 9 | ra pb ra ra pb pb sa rr pa ra ra sa ra sa pa pa
+2 0 9 6 5 3 7 4 1 8 | ra pb pb pb pb ra sa ra pa ra pa ra ra sa ra pa ra pa
+0 2 6 1 8 9 7 3 5 4 | pb pb rr pb ra sa rra sa rra rra rra sa rrr pa pa pa
+1 4 6 0 7 8 2 9 3 5 | pb rra sa ra ra ra pb ra ra sa rr pa pa
+0 5 6 7 9 4 8 1 2 3 | pb ra ra ra sa pb sa rra rra rra pa rra rra rra pa
+6 0 4 3 5 8 9 1 7 2 | pb pb sa rrr rra pb rra rra rra pa pa ra ra ra ra pa
+9 4 8 6 2 5 7 1 0 3 | pb ra pb sa pb sa rra rra pa rrr rra pa pa ra ra sa
+8 5 9 6 0 4 3 2 1 7 | ra pb ra pb ra pb pb ss rr rr pa pa pa pa rra rra rra
+9 3 1 5 4 6 2 8 7 0 | ra ra pb sa ra ra ra pb sa ra ra pb rr pa pa pa
+4 5 8 2 0 7 3 6 9 1 | pb pb pb ra pb sa rr ra pa sa rra sa pa pa rra rra rra pa
+0 4 2 5 3 6 8 7 1 9 | pb pb ra sa ra pa ra ra ra sa ra ra sa ra pa
+4 0 1 2 8 7 5 9 6 3 | rra pb pb pb pb pb sa rr rr sa rr pa pa pa pa pa
+2 9 6 4 3 0 8 7 5 1 | ra pb pb sa rr ra pb pb sa ra rrb pa ra ra pa ra pa pa ra
+9 4 7 0 5 6 2 8 3 1 | pb rra pb rr pb pb rr ra sa pa ra ra pa ra pa pa
+9 7 0 4 6 1 5 2 8 3 | sa rra pb rra sa rra pb rrr rra pb rrr sa rrr pa pa pa rra
+2 9 0 3 8 1 7 6 4 5 | pb pb pb pb pb pb sa rr ra pa ra pa rb pa ra pa pa pa
+9 6 7 2 8 4 5 1 3 0 | rra rra rra pb pb pb pb rr ra sa rr pa sa pa pa ra pa
+0 7 8 3 1 5 9 4 2 6 | pb ra ra pb pb pb ra ss rr pa sa pa rrr pa pa
+4 0 9 8 2 5 6 3 7 1 | pb rra pb pb sa rra rra pb rrr rra pa pa rrr pa pa
+3 0 4 5 1 7 2 6 8 9 | pb ra pb pb ra sa ra sa pa pa pa rra rra rra
+3 8 6 9 4 2 1 5 0 7 | pb sa rra rra pb sa rra rra pb rra pb rrr pa pa pa pa
+9 2 3 8 6 1 5 4 7 0 | rra pb pb pb pb sa rra sa rra rra sa pa pa rra pa ra pa
+7 4 8 1 5 6 9 2 3 0 | rra pb pb ra pb pb rr ra pa pa rr ra ra pa pa
+9 1 7 0 6 8 4 3 2 5 | pb pb sa pb sa rrr rrr pb rrr rrr sa pa rr pa pa pa
+8 5 1 7 4 2 9 3 0 6 | pb ra pb rr pa ra pb pb rr sa ra ra sa pa rrr pa pa rra
+4 8 3 1 9 5 7 2 0 6 | pb ra pb sa rrr rra rra pb rra pb rrr sa rrr pa pa pa rra pa
+8 6 7 9 1 4 5 2 3 0 | rra pb rra rra pb pb sa ra sa rra rra rra pa pa rra pa
+1 3 9 7 5 8 0 4 2 6 | pb pb pb sa rra sa rrr pb rrr pa pa pa rra pa ra
+8 5 0 7 3 1 9 4 2 6 | pb ra pb rr pa ra pb pb rr pb ra sa pa pa rrr pa pa
+9 2 3 1 6 4 5 8 7 0 | ra ra ra pb pb ra ra sa pa ra ra ra pb rr pa pa
+8 9 7 3 5 6 2 4 1 0 | pb pb rra rra pb pb pb rrr sa rrr pa pa pa rr ra ra pa pa
+3 9 1 5 7 0 2 4 6 8 | pb ra pb pb rra sa rra sa rra pa rrr pa rra pa rra
+2 6 5 1 4 3 9 8 7 0 | ra sa ra ra pb pb pb pb sa rrr rrr pa rrb pa rra pa rra pa ra
+6 0 1 9 3 8 5 2 4 7 | pb pb pb sa pb sa rrr pa rrr rrr pb rrr sa pa pa pa pa
+0 1 9 3 7 2 4 8 6 5 | pb pb pb pb rr pb rrb pb ra sa pa pa pa pa ra pa pa
+4 3 1 7 8 0 6 2 9 5 | ra pb pb ra ra pb pb sa rra rra pa rrr rra sa pa rrr pa pa
+4 1 3 2 0 5 8 9 7 6 | pb rra pb rra pb rra rra pa pa rra pa rra pb rra rra sa rra pa
+3 1 4 2 5 9 8 7 0 6 | pb rra pb ra sa rr pa ra ra ra pa ra pb sa ra ra pa ra
+5 0 4 3 2 7 9 8 6 1 | pb pb pb sa rrr rra pb rra rra sa rra pa pa pa rra rra rra pa
+5 7 2 6 9 0 1 4 8 3 | pb pb pb rrr pb rrr sa pa ss pa rra pa pa rra rra
+8 9 5 3 6 4 0 2 1 7 | ra ra pb pb pb pb rr ss rr ra pa pa pa pa rra rra rra
+9 4 5 0 1 3 7 6 2 8 | ra pb pb rra rra rra pb rrr rrr sa pa pa rra pa rra rra
+2 4 1 0 6 5 7 8 9 3 | pb ra pb pb ss rra rrr pa pa pa
+5 4 1 0 7 9 3 6 8 2 | pb pb rrr pb pb pb rrr sa rrr pa pa rrr pa rb pa pa
+1 7 5 0 8 4 9 3 6 2 | rra pb pb rr pb pb rr pb rr ra pa rrb pa rra pa pa pa
+9 6 2 3 5 0 4 7 1 8 | sa rra sa rra pb rra sa rra rra pb rra sa rrr rra pa pa

@@ -2,6 +2,7 @@
  * State: sequence A(top..bottom) ++ B(top..bottom) and |A|; index = rank(seq) * (n+1) + |A|.
  * The op set is closed under inversion, so a BFS from the sorted state gives every state's distance.
  *   optbfs N TABLE build                      build and save the table (uint8 per state)
+ *   optbfs N TABLE stats                      exact optimum over all N! inputs (B empty): mean, max, histogram
  *   optbfs N TABLE analyze < pairs            each input line: "v0 v1 ... v(N-1) | op op op ..."
  *     prints per case: opt, ours, and every move whose distance does not drop by 1 (wasted), with op and context. */
 #include <stdio.h>
@@ -57,7 +58,7 @@ int main(int argc, char **argv) {
     uint8_t *D = malloc(S);
     if (!strcmp(argv[3], "build")) {
         memset(D, 255, S);
-        uint32_t *cur = malloc(sizeof(uint32_t) * S / 4 + 16), *nxt = malloc(sizeof(uint32_t) * S / 2 + 16);
+        uint32_t *cur = malloc(sizeof(uint32_t) * S + 16), *nxt = malloc(sizeof(uint32_t) * S + 16);
         int q[16]; for (int i = 0; i < N; i++) q[i] = i;
         uint64_t g = idx(q, N); D[g] = 0; cur[0] = (uint32_t)g; uint64_t nc = 1, tot = 1;
         for (int d = 0; nc; d++) {
@@ -75,13 +76,20 @@ int main(int argc, char **argv) {
             tot += nn;
             fprintf(stderr, "depth %d: %llu states (total %llu)\n", d + 1, (unsigned long long)nn, (unsigned long long)tot);
             uint32_t *tm = cur; cur = nxt; nxt = tm; nc = nn;
-            if (nc > S / 4) { fprintf(stderr, "frontier too large\n"); return 1; }
         }
         FILE *f = fopen(argv[2], "wb"); fwrite(D, 1, S, f); fclose(f);
         return 0;
     }
     FILE *f = fopen(argv[2], "rb"); if (!f || fread(D, 1, S, f) != S) { fprintf(stderr, "bad table\n"); return 1; }
     fclose(f);
+    if (!strcmp(argv[3], "stats")) {
+        long long h[256] = {0}; double sum = 0; int mx = 0;
+        for (uint64_t r = 0; r < FACT[N]; r++) { int d = D[r * (N + 1) + N]; h[d]++; sum += d; if (d > mx) mx = d; }
+        printf("n %d inputs %llu mean_opt %.4f max_opt %d hist", N, (unsigned long long)FACT[N], sum / FACT[N], mx);
+        for (int d = 0; d <= mx; d++) printf(" %d:%lld", d, h[d]);
+        printf("\n");
+        return 0;
+    }
     char line[1 << 16];
     long long sumOpt = 0, sumOurs = 0, cases = 0, waste[NOPS] = {0}, cnt[NOPS] = {0};
     while (fgets(line, sizeof line, stdin)) {

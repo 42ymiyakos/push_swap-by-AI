@@ -1,6 +1,6 @@
 # ALGORITHM NOTES
 
-Covers derivations up to v8. Later additions (dual start, dualig, kick, LAHC) and the current design overview: [REPORT.md](REPORT.md) section 2.
+Covers derivations up to v8. Later additions (dual start, dualig, kick, LAHC) and the current design overview: [REPORT.md](REPORT.md) section 4.
 
 ## Problem facts
 - 11 ops; between two pushes only rotations/swaps happen, so with fixed "which element / which slot"
